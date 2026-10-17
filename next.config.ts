@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
@@ -18,10 +19,16 @@ const nextConfig: NextConfig = {
   },
 };
 
-// Gives `next dev` the same local D1 database that wrangler uses. It lives under node_modules/.cache
-// rather than wrangler's default .wrangler/state: Turbopack watches the project root, every D1 read
-// touches the SQLite WAL file, and under .wrangler/state that kept an open tab in a Fast Refresh
-// reload loop. package.json passes the same directory to `db:migrate` and `preview`.
-initOpenNextCloudflareForDev({ persist: { path: "node_modules/.cache/wrangler-state/v3" } });
+// Local D1 data for `next dev`, `npm run db:migrate` and `npm run preview`. Not wrangler's default
+// .wrangler/state: Turbopack watches the project tree, every D1 query creates or touches SQLite
+// -wal/-shm files, and an open tab then reloads in a loop. Turbopack ignores its own .next folder.
+const LOCAL_STATE_DIR = ".next/cache/wrangler-state";
 
-export default nextConfig;
+export default async function config(phase: string): Promise<NextConfig> {
+  if (phase === PHASE_DEVELOPMENT_SERVER) {
+    // Awaited so the dev server cannot take a request first: getCloudflareContext() would then
+    // start a second local runtime with wrangler's default state directory and an empty database.
+    await initOpenNextCloudflareForDev({ persist: { path: `${LOCAL_STATE_DIR}/v3` } });
+  }
+  return nextConfig;
+}

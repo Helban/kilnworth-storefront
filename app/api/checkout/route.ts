@@ -4,6 +4,7 @@ import { checkoutDetailsSchema, type CheckoutBody, type PaymentBody } from "@/li
 import { crossOriginRefused, isCrossOrigin, readJsonBody, validationFailed } from "@/lib/api/requests";
 import { apiError, toCartBody } from "@/lib/api/responses";
 import { describeHold, ensureHold } from "@/lib/cart/checkout-hold";
+import { rememberOrder } from "@/lib/cart/order-cookie";
 import { priceCartLines, readCartLines } from "@/lib/cart/session";
 import { refuseShortStock } from "@/lib/cart/stock-check";
 import { getDbWithExpiredHoldsReleased } from "@/lib/db";
@@ -86,5 +87,6 @@ export async function POST(request: Request) {
   }
 
   await attachStripeSession(db, orderId, session.id);
+  await rememberOrder(orderId);
   return Response.json({ payment: { redirectUrl: session.url } } satisfies PaymentBody, { status: 201 });
 }

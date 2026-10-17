@@ -57,7 +57,7 @@ export async function createCheckoutSession(
         },
       },
       expires_at: Math.floor(handoff.expiresAt / 1000),
-      success_url: `${handoff.origin}/orders/${handoff.orderId}`,
+      success_url: `${handoff.origin}/checkout/complete?order=${handoff.orderId}`,
       cancel_url: `${handoff.origin}/checkout`,
     },
     // A retried request for the same order gets the same session instead of a second one.

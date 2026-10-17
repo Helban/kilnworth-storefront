@@ -7,5 +7,8 @@ export function createCookieJar() {
     set: (name: string, value: string) => {
       values.set(name, value);
     },
+    delete: (name: string) => {
+      values.delete(name);
+    },
   };
 }

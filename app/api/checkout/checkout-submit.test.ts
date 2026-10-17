@@ -105,6 +105,7 @@ describe("POST /api/checkout", () => {
       total_cents: 34000 + 2 * 3800 + 900,
       stripe_session_id: expect.stringMatching(/^cs_/),
     });
+    expect(jar.values.get("order")).toBe(order.id);
     expect(order.terms_accepted_at).toBeGreaterThanOrEqual(before);
     expect(order.terms_accepted_at).toBeLessThanOrEqual(Date.now());
     expect(rows("SELECT product_name, unit_price_cents, quantity FROM order_lines ORDER BY product_name")).toEqual([
@@ -125,6 +126,7 @@ describe("POST /api/checkout", () => {
       [34000, 1],
       [3800, 2],
     ]);
+    expect(params.success_url).toMatch(/^http:\/\/shop\.test\/checkout\/complete\?order=[0-9a-f-]{36}$/);
     const sessionExpiresAt = (params.expires_at ?? 0) * 1000;
     expect(sessionExpiresAt).toBeGreaterThanOrEqual(before + 29 * 60 * 1000);
     const [{ expires_at: holdExpiresAt }] = rows("SELECT expires_at FROM reservations WHERE status = 'active'");
@@ -166,8 +168,8 @@ describe("POST /api/checkout", () => {
   });
 
   it("marks an earlier pending order as superseded when checkout is submitted again", async () => {
-    await submit(validDetails);
-    await submit({ ...validDetails, line2: "Studio 3" });
+    expect((await submit(validDetails)).status).toBe(201);
+    expect((await submit({ ...validDetails, line2: "Studio 3" })).status).toBe(201);
 
     expect(rows("SELECT status, shipping_line2 FROM orders ORDER BY created_at, status DESC")).toEqual([
       { status: "superseded", shipping_line2: "" },

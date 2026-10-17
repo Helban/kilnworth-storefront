@@ -57,7 +57,7 @@ export default async function CheckoutPage() {
             Order summary
           </h2>
           <div className="mt-4">
-            <OrderSummary cart={cart} />
+            <OrderSummary summary={cart} />
           </div>
           <Link href="/cart" className="mt-4 inline-block text-sm font-medium underline underline-offset-2">
             Change your cart

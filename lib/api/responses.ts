@@ -1,6 +1,7 @@
 import type { PricedCart } from "@/lib/cart/pricing";
+import type { OrderRecord } from "@/lib/store/orders";
 import type { ProductRecord } from "@/lib/store/products";
-import type { ApiErrorBody, Cart, CartBody, Product } from "./contract";
+import type { ApiErrorBody, Cart, CartBody, Order, Product } from "./contract";
 
 // Placeholders and real photos are both exported at this size; see public/products/.
 const PRODUCT_IMAGE_SIZE = 800;
@@ -41,4 +42,11 @@ export function toCartBody(cart: PricedCart): Cart {
 
 export function cartResponse(cart: PricedCart): Response {
   return Response.json({ cart: toCartBody(cart) } satisfies CartBody);
+}
+
+export function toOrderBody(order: OrderRecord): Order {
+  return {
+    ...order,
+    lines: order.lines.map((line) => ({ ...line, lineTotalCents: line.unitPriceCents * line.quantity })),
+  };
 }

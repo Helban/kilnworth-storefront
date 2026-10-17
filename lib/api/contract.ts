@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ORDER_STATUSES } from "@/lib/store/orders";
 import { PRODUCT_CATEGORIES } from "@/lib/store/products";
 import { US_STATE_CODES } from "@/lib/us-states";
 
@@ -59,6 +60,35 @@ const holdSchema = z.discriminatedUnion("status", [
 
 export const checkoutBodySchema = z.object({ checkout: z.object({ hold: holdSchema, cart: cartSchema }) });
 export const paymentBodySchema = z.object({ payment: z.object({ redirectUrl: z.url() }) });
+
+const orderSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(ORDER_STATUSES),
+  email: z.string(),
+  shippingAddress: z.object({
+    name: z.string(),
+    line1: z.string(),
+    line2: z.string(),
+    city: z.string(),
+    state: z.string(),
+    postalCode: z.string(),
+  }),
+  lines: z.array(
+    z.object({
+      name: z.string().min(1),
+      quantity: z.number().int().positive(),
+      unitPriceCents: z.number().int().positive(),
+      lineTotalCents: z.number().int().positive(),
+    }),
+  ),
+  subtotalCents: z.number().int().nonnegative(),
+  shippingCents: z.number().int().nonnegative(),
+  totalCents: z.number().int().nonnegative(),
+  createdAt: z.number().int(),
+  paidAt: z.number().int().nullable(),
+});
+
+export const orderBodySchema = z.object({ order: orderSchema });
 export const apiErrorSchema = z.object({
   error: z.object({
     code: z.string(),
@@ -102,6 +132,8 @@ export type CartBody = z.infer<typeof cartBodySchema>;
 export type Hold = z.infer<typeof holdSchema>;
 export type CheckoutBody = z.infer<typeof checkoutBodySchema>;
 export type PaymentBody = z.infer<typeof paymentBodySchema>;
+export type Order = z.infer<typeof orderSchema>;
+export type OrderBody = z.infer<typeof orderBodySchema>;
 export type ProductListBody = z.infer<typeof productListSchema>;
 export type ProductDetailBody = z.infer<typeof productDetailSchema>;
 export type ApiErrorBody = z.infer<typeof apiErrorSchema>;

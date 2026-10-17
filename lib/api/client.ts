@@ -3,6 +3,7 @@ import {
   apiErrorSchema,
   cartBodySchema,
   checkoutBodySchema,
+  orderBodySchema,
   paymentBodySchema,
   productDetailSchema,
   productListSchema,
@@ -36,6 +37,8 @@ export function createApiClient(send: ApiTransport) {
       request(send, "/api/checkout/reservation", checkoutBodySchema, { method: "POST" }),
     startPayment: (details: CheckoutDetails) =>
       request(send, "/api/checkout", paymentBodySchema, jsonBody("POST", details)),
+    getOrder: (orderId: string, signal?: AbortSignal) =>
+      request(send, `/api/orders/${encodeURIComponent(orderId)}`, orderBodySchema, { signal }),
   };
 }
 
@@ -53,7 +56,8 @@ async function request<T>(
   try {
     response = await send(path, init);
   } catch (error) {
-    // fetch() rejects with a TypeError when the request never got a response.
+    // fetch() rejects with a TypeError when the request never got a response. An AbortError means
+    // the caller cancelled and is rethrown for the caller to ignore.
     if (error instanceof TypeError) return { ok: false, failure: { kind: "network" } };
     throw error;
   }

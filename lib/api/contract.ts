@@ -44,6 +44,19 @@ const cartSchema = z.object({
 export const productListSchema = z.object({ products: z.array(productSchema) });
 export const productDetailSchema = z.object({ product: productSchema });
 export const cartBodySchema = z.object({ cart: cartSchema });
+
+// "none" covers every case where the cart is not held as it stands: never held, the hold ran out,
+// or the cart changed after the hold was taken.
+const holdSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("held"),
+    expiresAt: z.number().int().positive(),
+    secondsLeft: z.number().int().nonnegative(),
+  }),
+  z.object({ status: z.literal("none") }),
+]);
+
+export const checkoutBodySchema = z.object({ checkout: z.object({ hold: holdSchema, cart: cartSchema }) });
 export const apiErrorSchema = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
 });
@@ -61,6 +74,8 @@ export type Product = z.infer<typeof productSchema>;
 export type Cart = z.infer<typeof cartSchema>;
 export type CartLineBody = z.infer<typeof cartLineSchema>;
 export type CartBody = z.infer<typeof cartBodySchema>;
+export type Hold = z.infer<typeof holdSchema>;
+export type CheckoutBody = z.infer<typeof checkoutBodySchema>;
 export type ProductListBody = z.infer<typeof productListSchema>;
 export type ProductDetailBody = z.infer<typeof productDetailSchema>;
 export type ApiErrorBody = z.infer<typeof apiErrorSchema>;

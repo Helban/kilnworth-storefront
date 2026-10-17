@@ -5,7 +5,7 @@ import { createTestDatabase } from "@/test/sqlite-database";
 import { GET } from "./route";
 
 let db: SqlDatabase;
-vi.mock("@/lib/db", () => ({ getDb: async () => db }));
+vi.mock("@/lib/db", () => ({ getDbWithExpiredHoldsReleased: async () => db }));
 
 function getProduct(slug: string) {
   return GET(new Request(`http://test/api/products/${slug}`), { params: Promise.resolve({ slug }) });

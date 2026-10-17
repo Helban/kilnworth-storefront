@@ -2,10 +2,9 @@ import { setCartLineRequestSchema, slugSchema } from "@/lib/api/contract";
 import { crossOriginRefused, isCrossOrigin, readJsonBody } from "@/lib/api/requests";
 import { apiError, cartResponse } from "@/lib/api/responses";
 import { setLineQuantity } from "@/lib/cart/cookie";
-import { priceCartLines, readCartLines, writeCartLines } from "@/lib/cart/session";
+import { findProductForShopper, priceCartLines, readCartLines, writeCartLines } from "@/lib/cart/session";
 import { refuseQuantity } from "@/lib/cart/stock-check";
-import { getDb } from "@/lib/db";
-import { findProductBySlug } from "@/lib/store/products";
+import { getDbWithExpiredHoldsReleased } from "@/lib/db";
 
 // Sets the quantity of one line. Zero removes it.
 export async function PUT(request: Request, { params }: RouteContext<"/api/cart/lines/[slug]">) {
@@ -18,9 +17,9 @@ export async function PUT(request: Request, { params }: RouteContext<"/api/cart/
   if (!parsed.ok) return parsed.response;
   const { quantity } = parsed.body;
 
-  const db = await getDb();
+  const db = await getDbWithExpiredHoldsReleased();
   if (quantity > 0) {
-    const product = await findProductBySlug(db, slug);
+    const product = await findProductForShopper(db, slug);
     if (!product) return apiError(404, "product_not_found", "This piece is no longer listed.");
     const refusal = refuseQuantity(product, quantity);
     if (refusal) return refusal;

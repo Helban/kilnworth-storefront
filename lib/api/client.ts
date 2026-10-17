@@ -1,5 +1,11 @@
 import type { z } from "zod";
-import { apiErrorSchema, cartBodySchema, productDetailSchema, productListSchema } from "./contract";
+import {
+  apiErrorSchema,
+  cartBodySchema,
+  checkoutBodySchema,
+  productDetailSchema,
+  productListSchema,
+} from "./contract";
 
 // The one module the UI uses to talk to the API. Every response is checked against the contract
 // before the UI sees it, and every failure comes back as a value the caller has to handle.
@@ -23,6 +29,9 @@ export function createApiClient(send: ApiTransport) {
       request(send, "/api/cart/lines", cartBodySchema, jsonBody("POST", { slug, quantity })),
     setCartQuantity: (slug: string, quantity: number) =>
       request(send, `/api/cart/lines/${encodeURIComponent(slug)}`, cartBodySchema, jsonBody("PUT", { quantity })),
+    getCheckout: () => request(send, "/api/checkout", checkoutBodySchema),
+    holdCart: () =>
+      request(send, "/api/checkout/reservation", checkoutBodySchema, { method: "POST" }),
   };
 }
 

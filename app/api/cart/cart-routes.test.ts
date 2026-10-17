@@ -9,7 +9,7 @@ import { GET as getCart } from "./route";
 
 let db: TestDatabase;
 let jar: ReturnType<typeof createCookieJar>;
-vi.mock("@/lib/db", () => ({ getDb: async () => db }));
+vi.mock("@/lib/db", () => ({ getDbWithExpiredHoldsReleased: async () => db }));
 vi.mock("next/headers", () => ({ cookies: async () => jar }));
 
 function jsonRequest(method: string, path: string, payload: unknown, headers: Record<string, string> = {}) {

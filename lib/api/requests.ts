@@ -1,4 +1,6 @@
 import type { z } from "zod";
+import type { ApiErrorBody } from "./contract";
+import { firstErrorPerField } from "./field-errors";
 import { apiError } from "./responses";
 
 type BodyResult<T> = { ok: true; body: T } | { ok: false; response: Response };
@@ -40,4 +42,12 @@ export function isCrossOrigin(request: Request): boolean {
 
 export function crossOriginRefused(): Response {
   return apiError(403, "cross_origin", "This request must come from the shop's own pages.");
+}
+
+// 422 with one message per invalid field, for forms the shopper can correct.
+export function validationFailed(error: z.ZodError): Response {
+  const body: ApiErrorBody = {
+    error: { code: "invalid_details", message: "Some details are missing or not valid.", fields: firstErrorPerField(error) },
+  };
+  return Response.json(body, { status: 422 });
 }

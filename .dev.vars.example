@@ -1,0 +1,10 @@
+# Copy to .dev.vars for local development. .dev.vars is git-ignored; never commit real values.
+# Only Stripe test-mode values work: the app refuses anything that is not an sk_test_ key.
+#
+# stripe-mock accepts any key shaped like sk_test_123. With your own Stripe test account, use its
+# sk_test_ key, remove STRIPE_API_BASE, and take the webhook secret from `stripe listen`.
+STRIPE_SECRET_KEY=sk_test_123
+STRIPE_WEBHOOK_SECRET=whsec_local_only
+
+# Send Stripe API calls to stripe-mock (`npm run stripe-mock`) instead of api.stripe.com.
+STRIPE_API_BASE=http://localhost:12111

@@ -3,8 +3,10 @@ import {
   apiErrorSchema,
   cartBodySchema,
   checkoutBodySchema,
+  paymentBodySchema,
   productDetailSchema,
   productListSchema,
+  type CheckoutDetails,
 } from "./contract";
 
 // The one module the UI uses to talk to the API. Every response is checked against the contract
@@ -12,7 +14,7 @@ import {
 
 export type ApiFailure =
   | { kind: "network" }
-  | { kind: "http"; status: number; code: string; message: string }
+  | { kind: "http"; status: number; code: string; message: string; fields?: Record<string, string> }
   | { kind: "contract"; path: string; issues: string[] };
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; failure: ApiFailure };
@@ -32,6 +34,8 @@ export function createApiClient(send: ApiTransport) {
     getCheckout: () => request(send, "/api/checkout", checkoutBodySchema),
     holdCart: () =>
       request(send, "/api/checkout/reservation", checkoutBodySchema, { method: "POST" }),
+    startPayment: (details: CheckoutDetails) =>
+      request(send, "/api/checkout", paymentBodySchema, jsonBody("POST", details)),
   };
 }
 
@@ -64,6 +68,7 @@ async function request<T>(
         status: response.status,
         code: errorBody.success ? errorBody.data.error.code : "unknown",
         message: errorBody.success ? errorBody.data.error.message : response.statusText,
+        fields: errorBody.success ? errorBody.data.error.fields : undefined,
       },
     };
   }

@@ -7,6 +7,7 @@
     "build": "next build",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview --persist-to .next/cache/wrangler-state",
     "db:migrate": "wrangler d1 migrations apply DB --local --persist-to .next/cache/wrangler-state",
+    "stripe-mock": "docker run --rm -p 12111:12111 stripe/stripe-mock@sha256:aeb96b83e87a893d2ac005e363ac01ffa6e59a5ad85b49c155dfc9129de02e78",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
@@ -18,6 +19,7 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "server-only": "0.0.1",
+    "stripe": "23.0.0",
     "zod": "4.6.7"
   },
   "devDependencies": {

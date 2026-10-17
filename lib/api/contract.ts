@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PRODUCT_CATEGORIES } from "@/lib/store/products";
+import { US_STATE_CODES } from "@/lib/us-states";
 
 // The JSON the API promises. Route handlers build these shapes; the client refuses anything else.
 
@@ -57,8 +58,14 @@ const holdSchema = z.discriminatedUnion("status", [
 ]);
 
 export const checkoutBodySchema = z.object({ checkout: z.object({ hold: holdSchema, cart: cartSchema }) });
+export const paymentBodySchema = z.object({ payment: z.object({ redirectUrl: z.url() }) });
 export const apiErrorSchema = z.object({
-  error: z.object({ code: z.string(), message: z.string() }),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    // Per-field messages on a 422, keyed by request field name.
+    fields: z.record(z.string(), z.string()).optional(),
+  }),
 });
 
 // Request bodies, validated by the route handlers.
@@ -70,12 +77,31 @@ export const setCartLineRequestSchema = z.object({
   quantity: z.number().int().min(0).max(MAX_LINE_QUANTITY),
 });
 
+// The checkout form and POST /api/checkout validate with this same schema, so the shopper sees the
+// server's rules before submitting. The server still checks everything again.
+export const checkoutDetailsSchema = z.object({
+  email: z.email({ error: "Enter an email address, like name@example.com." }).max(254),
+  name: z.string().trim().min(1, { error: "Enter the name for the delivery." }).max(100),
+  line1: z.string().trim().min(1, { error: "Enter the street address." }).max(100),
+  line2: z.string().trim().max(100),
+  city: z.string().trim().min(1, { error: "Enter the city." }).max(60),
+  state: z.enum(US_STATE_CODES, { error: "Choose a state." }),
+  postalCode: z
+    .string()
+    .trim()
+    .regex(/^\d{5}(-\d{4})?$/, { error: "Enter a 5-digit ZIP code, like 97214." }),
+  // Must be the boolean true. "on", "yes" or a missing field all count as not accepted.
+  acceptTerms: z.literal(true, { error: "Accept the terms of sale to continue." }),
+});
+
+export type CheckoutDetails = z.infer<typeof checkoutDetailsSchema>;
 export type Product = z.infer<typeof productSchema>;
 export type Cart = z.infer<typeof cartSchema>;
 export type CartLineBody = z.infer<typeof cartLineSchema>;
 export type CartBody = z.infer<typeof cartBodySchema>;
 export type Hold = z.infer<typeof holdSchema>;
 export type CheckoutBody = z.infer<typeof checkoutBodySchema>;
+export type PaymentBody = z.infer<typeof paymentBodySchema>;
 export type ProductListBody = z.infer<typeof productListSchema>;
 export type ProductDetailBody = z.infer<typeof productDetailSchema>;
 export type ApiErrorBody = z.infer<typeof apiErrorSchema>;

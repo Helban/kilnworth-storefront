@@ -1,10 +1,10 @@
 import type { CheckoutBody } from "@/lib/api/contract";
 import { crossOriginRefused, isCrossOrigin } from "@/lib/api/requests";
 import { apiError, toCartBody } from "@/lib/api/responses";
-import { describeHold, heldUntil, readHeldReservationId, rememberReservation } from "@/lib/cart/checkout-hold";
+import { ensureHold, heldUntil } from "@/lib/cart/checkout-hold";
 import { priceCartLines, readCartLines } from "@/lib/cart/session";
+import { refuseShortStock } from "@/lib/cart/stock-check";
 import { getDbWithExpiredHoldsReleased } from "@/lib/db";
-import { releaseReservation, reserveStock } from "@/lib/store/reservations";
 
 // Starts checkout: holds every line in the cart for ten minutes, or none of them. Calling it again
 // while the current hold still covers the cart returns that hold unchanged, so reloading or
@@ -17,27 +17,7 @@ export async function POST(request: Request) {
 
   const now = Date.now();
   const cart = await priceCartLines(db, lines);
-  const current = await describeHold(db, lines, now);
-  if (current.status === "held") {
-    return Response.json({ checkout: { hold: current, cart: toCartBody(cart) } } satisfies CheckoutBody);
-  }
-
-  const previousId = await readHeldReservationId();
-  if (previousId) await releaseReservation(db, previousId);
-
-  const outcome = await reserveStock(db, lines, now);
-  if (!outcome.ok) {
-    const shortNames = cart.lines
-      .filter((line) => outcome.shortSlugs.includes(line.product.slug))
-      .map((line) => line.product.name);
-    return apiError(
-      409,
-      "insufficient_stock",
-      `Not enough left of: ${shortNames.join(", ")}. Change the quantity in your cart and try again.`,
-    );
-  }
-
-  await rememberReservation(outcome.reservationId);
-  const hold = heldUntil(outcome.expiresAt, now);
-  return Response.json({ checkout: { hold, cart: toCartBody(cart) } } satisfies CheckoutBody);
+  const hold = await ensureHold(db, lines, now);
+  if (!hold.ok) return refuseShortStock(cart, hold.shortSlugs);
+  return Response.json({ checkout: { hold: heldUntil(hold.expiresAt, now), cart: toCartBody(cart) } } satisfies CheckoutBody);
 }

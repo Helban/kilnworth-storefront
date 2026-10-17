@@ -13,5 +13,6 @@ export default defineConfig({
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["node_modules/**", ".next/**", ".open-next/**", "e2e/**"],
     environment: "node",
+    globalSetup: ["test/global-setup.ts"],
   },
 });

@@ -74,6 +74,16 @@ export async function findActiveReservation(
   return { ...reservation, lines };
 }
 
+// Pushes the expiry of an active hold out to `until`, never earlier. False when the hold is no
+// longer active, which the caller must treat as having lost the stock.
+export async function extendReservation(db: SqlDatabase, reservationId: string, until: number): Promise<boolean> {
+  const { meta } = await db
+    .prepare("UPDATE reservations SET expires_at = MAX(expires_at, ?1) WHERE id = ?2 AND status = 'active'")
+    .bind(until, reservationId)
+    .run();
+  return meta.changes === 1;
+}
+
 // Safe to call more than once: only an active hold is released.
 export async function releaseReservation(db: SqlDatabase, reservationId: string): Promise<void> {
   await releaseHolds(db, "r.id = ?1", reservationId);

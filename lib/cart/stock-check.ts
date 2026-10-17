@@ -1,6 +1,7 @@
 import { MAX_LINE_QUANTITY } from "@/lib/api/contract";
 import { apiError } from "@/lib/api/responses";
 import type { ProductRecord } from "@/lib/store/products";
+import type { PricedCart } from "./pricing";
 
 // The cart refuses quantities that are not available right now. This is a courtesy check for the
 // shopper; the guarantee comes from the reservation taken at checkout.
@@ -18,4 +19,15 @@ function describeShortfall(stockLeft: number, alreadyInCart: number): string {
   if (stockLeft === 0) return "This piece has sold out.";
   if (alreadyInCart === 0) return `Only ${stockLeft} left.`;
   return `Only ${stockLeft} left, and your cart already has ${alreadyInCart}.`;
+}
+
+export function refuseShortStock(cart: PricedCart, shortSlugs: readonly string[]): Response {
+  const shortNames = cart.lines
+    .filter((line) => shortSlugs.includes(line.product.slug))
+    .map((line) => line.product.name);
+  return apiError(
+    409,
+    "insufficient_stock",
+    `Not enough left of: ${shortNames.join(", ")}. Change the quantity in your cart and try again.`,
+  );
 }

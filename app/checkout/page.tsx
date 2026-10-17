@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CheckoutForm } from "@/components/checkout-form";
 import { FetchFailure } from "@/components/fetch-failure";
 import { HoldCartButton } from "@/components/hold-cart-button";
 import { OrderSummary } from "@/components/order-summary";
+import { TestModeNotice } from "@/components/test-mode-notice";
 import type { Hold } from "@/lib/api/contract";
 import { getServerApi } from "@/lib/api/server";
 
@@ -39,14 +41,18 @@ export default async function CheckoutPage() {
   return (
     <>
       <h1 className="font-serif text-3xl font-semibold">Checkout</h1>
-      <div className="mt-6 grid gap-10 md:grid-cols-2">
-        <section aria-labelledby="hold-heading">
-          <h2 id="hold-heading" className="sr-only">
-            Your hold
+      <div className="mt-6">
+        <TestModeNotice />
+      </div>
+      <div className="mt-8 grid gap-10 md:grid-cols-2">
+        <section aria-labelledby="details-heading" className="space-y-6">
+          <h2 id="details-heading" className="sr-only">
+            Your details
           </h2>
           <HoldStatus hold={hold} />
+          {hold.status === "held" && <CheckoutForm />}
         </section>
-        <section aria-labelledby="summary-heading">
+        <section aria-labelledby="summary-heading" className="md:order-last">
           <h2 id="summary-heading" className="font-serif text-xl font-semibold">
             Order summary
           </h2>
@@ -79,12 +85,9 @@ function HoldStatus({ hold }: { hold: Hold }) {
 
   const minutesLeft = Math.max(1, Math.ceil(hold.secondsLeft / 60));
   return (
-    <div className="rounded-md border border-stone-300 p-4">
-      <p>
-        These pieces are held for you for {minutesLeft} more {minutesLeft === 1 ? "minute" : "minutes"}.
-        Nobody else can buy them in that time.
-      </p>
-      <p className="mt-3 text-stone-600">The address form and payment arrive in the next change.</p>
-    </div>
+    <p className="rounded-md border border-stone-300 p-4">
+      These pieces are held for you for {minutesLeft} more {minutesLeft === 1 ? "minute" : "minutes"}. Nobody else
+      can buy them in that time. If the hold runs out, we check the stock again when you continue to payment.
+    </p>
   );
 }

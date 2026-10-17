@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview --persist-to node_modules/.cache/wrangler-state",
+    "db:migrate": "wrangler d1 migrations apply DB --local --persist-to node_modules/.cache/wrangler-state",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",

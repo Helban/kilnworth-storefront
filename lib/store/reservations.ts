@@ -1,5 +1,5 @@
 import type { CartLine } from "@/lib/cart/cookie";
-import type { SqlDatabase } from "./database";
+import type { SqlDatabase, SqlStatement } from "./database";
 
 export const RESERVATION_TTL_MS = 10 * 60 * 1000;
 
@@ -86,25 +86,28 @@ export async function extendReservation(db: SqlDatabase, reservationId: string, 
 
 // Safe to call more than once: only an active hold is released.
 export async function releaseReservation(db: SqlDatabase, reservationId: string): Promise<void> {
-  await releaseHolds(db, "r.id = ?1", reservationId);
+  await db.batch(releaseHoldStatements(db, HOLD_BY_ID, reservationId));
 }
 
 // Lazy expiry: called before anything reads or changes stock (see getDbWithExpiredHoldsReleased).
 export async function releaseExpiredReservations(db: SqlDatabase, now: number): Promise<void> {
-  await releaseHolds(db, "r.expires_at <= ?1", now);
+  await db.batch(releaseHoldStatements(db, HOLDS_EXPIRED_BY, now));
 }
 
-// `matching` is one of the two fixed conditions above, never caller input. Both statements run in
-// one transaction, and the stock is given back before the status flips, so a hold is returned once.
-async function releaseHolds(
-  db: SqlDatabase,
-  matching: "r.id = ?1" | "r.expires_at <= ?1",
-  value: string | number,
-): Promise<void> {
+// The only conditions releaseHoldStatements accepts. They are fixed strings, never caller input.
+const HOLD_BY_ID = "r.id = ?1";
+const HOLDS_EXPIRED_BY = "r.expires_at <= ?1";
+export const HOLD_OF_PENDING_ORDER =
+  "r.id = (SELECT reservation_id FROM orders WHERE id = ?1 AND status = 'pending_payment')";
+type HoldCondition = typeof HOLD_BY_ID | typeof HOLDS_EXPIRED_BY | typeof HOLD_OF_PENDING_ORDER;
+
+// Statements that give back the stock of every active hold matching the condition, then mark
+// those holds released. Run them in one batch, in this order, so a hold is returned exactly once.
+export function releaseHoldStatements(db: SqlDatabase, matching: HoldCondition, value: string | number): SqlStatement[] {
   const heldLines = `
     FROM reservation_lines l JOIN reservations r ON r.id = l.reservation_id
     WHERE r.status = 'active' AND ${matching}`;
-  await db.batch([
+  return [
     db
       .prepare(
         `UPDATE products
@@ -115,5 +118,5 @@ async function releaseHolds(
     db
       .prepare(`UPDATE reservations SET status = 'released' WHERE id IN (SELECT r.id FROM reservations r WHERE r.status = 'active' AND ${matching})`)
       .bind(value),
-  ]);
+  ];
 }

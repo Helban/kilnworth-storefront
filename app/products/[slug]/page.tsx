@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
+import { AddToCart } from "@/components/add-to-cart";
 import { FetchFailure } from "@/components/fetch-failure";
 import { StockLabel } from "@/components/stock-label";
 import { getServerApi } from "@/lib/api/server";
@@ -51,6 +52,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
           <p className="mt-1 text-stone-600">
             <StockLabel stockLeft={product.stockLeft} />
           </p>
+          <AddToCart slug={product.slug} stockLeft={product.stockLeft} />
           <p className="mt-6 max-w-prose leading-relaxed">{product.description}</p>
         </div>
       </article>

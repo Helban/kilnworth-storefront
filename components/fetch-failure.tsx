@@ -20,11 +20,13 @@ export function FetchFailure({ failure, subject, retryHref }: FetchFailureProps)
   );
 }
 
-function describeFailure(failure: ApiFailure): string {
+export function describeFailure(failure: ApiFailure): string {
   switch (failure.kind) {
     case "network":
       return "The shop's server did not answer. Check your connection and try again.";
     case "http":
+      // 4xx messages are written for shoppers ("Only 2 left."); 5xx details are not.
+      if (failure.status < 500 && failure.code !== "unknown") return failure.message;
       return `The shop's server returned an error (HTTP ${failure.status}). It is probably temporary.`;
     case "contract":
       return (

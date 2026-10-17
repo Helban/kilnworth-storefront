@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { CART_COOKIE, countItems, parseCartCookie } from "@/lib/cart/cookie";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,7 +9,9 @@ export const metadata: Metadata = {
   description: "Small-batch ceramics from Kilnworth Studio.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Counted from the cookie alone: the header does not need prices, so it skips the database.
+  const itemCount = countItems(parseCartCookie((await cookies()).get(CART_COOKIE)?.value));
   return (
     <html lang="en" className="h-full antialiased">
       <body className="flex min-h-full flex-col font-sans">
@@ -15,6 +19,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
             <Link href="/" className="font-serif text-xl font-semibold">
               Kilnworth Studio
+            </Link>
+            <Link href="/cart" className="font-medium underline-offset-2 hover:underline">
+              Cart{itemCount > 0 && <span> ({itemCount})</span>}
             </Link>
           </div>
         </header>

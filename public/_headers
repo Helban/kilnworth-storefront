@@ -1,0 +1,8 @@
+# Workers static assets: these files are served without passing through Next.js, so the headers
+# from next.config.ts do not reach them.
+# https://developers.cloudflare.com/workers/static-assets/headers
+/*
+  X-Content-Type-Options: nosniff
+
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -10,7 +10,8 @@ Update it in the same pull request as the change it describes.
 | Platform check (Next.js + OpenNext + D1) | Done, see below |
 | Catalog, API, typed client | Done, see "Catalog" below |
 | Cart | Done, see "Cart" below |
-| Checkout, reservations, terms consent | Not started |
+| Stock reservations at checkout | Done, see "Reservations" below |
+| Checkout form, terms consent, orders | Not started |
 | Stripe Checkout (test mode), webhook | Not started |
 | README, e2e tests | Not started |
 
@@ -142,6 +143,53 @@ Moving the files outside the watched tree stopped it (52 navigations in 6 second
 measured with an idle Chromium tab). Turbopack has no setting to ignore a directory.
 `next.config.ts`, `npm run db:migrate` and `npm run preview` all point at the same directory, so
 they share one database. `npm ci` deletes it; run `npm run db:migrate` again afterwards.
+
+## Reservations
+
+Pressing "Check out" in the cart sends `POST /api/checkout/reservation`, which holds every line of
+the cart for ten minutes, or none of them. The reservation id goes into an `HttpOnly` cookie
+named `checkout`. Holding is a POST from a click, never a side effect of rendering `/checkout`, so
+a prefetch cannot take stock.
+
+How the race is prevented (`lib/store/reservations.ts`): one D1 batch, which D1 runs as a single
+transaction. It inserts the reservation row, then for each line:
+
+1. `UPDATE products SET reserved = reserved + :qty WHERE slug = :slug AND available - reserved >= :qty`
+2. `INSERT INTO reservation_lines ... SELECT ... WHERE changes() = 1`
+
+The check and the write are one statement, so there is no gap between reading stock and taking
+it. The line row that records the hold exists only if its UPDATE changed a row, so releasing a
+hold can never return stock that was not taken. If any line comes up short, the lines that
+succeeded are released straight away, and the shopper gets a 409 naming the short pieces. A
+`CHECK (reserved <= available)` on `products` is a second backstop.
+
+Tested in `lib/store/reservations.test.ts`: ten concurrent `reserveStock` calls for the moon jar
+(stock 1) give exactly one success, `reserved` ends at 1, and there is one line row. The test
+database yields to the event loop before every statement, so a read-then-write version would
+interleave and fail. I checked the other direction by hand: with the `available - reserved >= qty`
+condition removed, the race test fails. `lib/store/reservations.d1.test.ts` runs the same race
+against a real local D1 (workerd through wrangler's `getPlatformProxy`), mainly to prove that
+`changes()` inside a D1 batch behaves as it does in `node:sqlite`. It does. That file takes about
+6 seconds because it starts workerd.
+
+Expiry is lazy. Every route that reads or changes stock first runs `releaseExpiredReservations`
+(through `getDbWithExpiredHoldsReleased` in `lib/db.ts`). An abandoned checkout therefore stops
+counting against stock as soon as anyone looks, without a scheduler. The cost is one extra UPDATE
+per request. A Cron Trigger calling the same function would move it off the request path; that
+needs a custom worker entry around OpenNext's, which I did not set up. A hold past its expiry
+time is never reported as active, even before the sweep has run.
+
+Two smaller decisions:
+
+- A shopper's own hold counts as available to them. Without that, the piece they are holding
+  reads as sold out in their own cart.
+- Taking a new hold after the cart changed releases the old one first, then reserves. Another
+  shopper could take a unit in the moment between. Doing both in one batch would close that gap,
+  but I judged it not worth the extra SQL for this shop.
+
+The time left on `/checkout` is computed when the page renders and does not tick. A page left
+open goes stale; the stock re-check before payment (next slice) is what actually protects the
+shopper.
 
 ## npm audit
 

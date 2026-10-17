@@ -1,7 +1,8 @@
 # Kilnworth Studio storefront
 
 A small Next.js shop for a fictional ceramics workshop, built to run on Cloudflare Workers with
-D1. Work in progress: the catalog, product pages and cart work; checkout does not exist yet.
+D1. Work in progress: the catalog, product pages, cart and the stock hold at the start of checkout
+work. The address form and payment do not exist yet.
 See `NOTES.md` for what has been checked so far.
 
 ## Running it locally

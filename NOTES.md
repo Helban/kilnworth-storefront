@@ -9,7 +9,7 @@ Update it in the same pull request as the change it describes.
 | --- | --- |
 | Platform check (Next.js + OpenNext + D1) | Done, see below |
 | Catalog, API, typed client | Done, see "Catalog" below |
-| Cart | Not started |
+| Cart | Done, see "Cart" below |
 | Checkout, reservations, terms consent | Not started |
 | Stripe Checkout (test mode), webhook | Not started |
 | README, e2e tests | Not started |
@@ -29,7 +29,8 @@ Versions, taken from npm on that day and pinned exactly in `package.json`:
 - `eslint` 10.13.0. `create-next-app` writes `^9`, but npm marks 9.x as unsupported, and
   `eslint-config-next` 16.4.2 lints cleanly on 10.
 
-What was run, with a D1 binding named `DB` (local mode, state in `.wrangler/state`):
+What was run, with a D1 binding named `DB` (local mode; the state directory moved later, see
+"Local D1 state" below):
 
 1. `next dev`: `GET /api/health` runs `SELECT 1` against D1 through `getCloudflareContext()` and
    returns 200.
@@ -111,6 +112,37 @@ close to 2x. Catalog tiles are smaller, about 250 CSS pixels, so they download m
 they show. With flat placeholders that is about 3 KB each. With real photos it should be fixed by
 binding Cloudflare Images or exporting a second, smaller size.
 
+## Cart
+
+The cart is a cookie named `cart` holding slugs and quantities, nothing else: `HttpOnly`,
+`Secure`, `SameSite=Lax`, 30 days. It is parsed with zod on every read, and anything malformed
+counts as an empty cart. Prices never come from the client. `GET /api/cart` prices each line from
+D1 through `priceCart` (`lib/cart/pricing.ts`), so a price change shows up on the next read, and a
+price written into the cookie by hand is dropped (both tested).
+
+Adding to the cart checks the quantity against the stock left (shelf minus open reservations) and
+answers 409 with a shopper-readable message. That is only a courtesy. Nothing is held until
+checkout, so the cart can still say "3 left" when someone else is about to buy them.
+
+Cart writes are `POST /api/cart/lines` and `PUT /api/cart/lines/<slug>`. Both refuse a non-JSON
+body (415) and an `Origin` header that does not match the host (403). Together with `SameSite=Lax`
+that covers CSRF without a token. A request without `Origin` is allowed, because browsers always
+send it on cross-origin POST and PUT.
+
+Shipping is a flat $9.00 for any US address. There is no sales tax and no free-shipping threshold.
+Both are open questions for the shop owner; Stripe Tax would be the obvious route for tax.
+
+### Local D1 state
+
+The local D1 database lives in `node_modules/.cache/wrangler-state`, not wrangler's default
+`.wrangler/state`. With the default, an open browser tab on `next dev` reloaded itself several
+times a second. Every D1 read touches the SQLite `-wal` and `-shm` files, Turbopack watches the
+project root, and each change triggered a Fast Refresh rebuild and a reload, which read D1 again.
+Moving the files outside the watched tree stopped it (52 navigations in 6 seconds before, 2 after,
+measured with an idle Chromium tab). Turbopack has no setting to ignore a directory.
+`next.config.ts`, `npm run db:migrate` and `npm run preview` all point at the same directory, so
+they share one database. `npm ci` deletes it; run `npm run db:migrate` again afterwards.
+
 ## npm audit
 
 `npm audit` reports 5 high-severity findings, all one chain:
@@ -142,7 +174,9 @@ adapter yields to the event loop before every call, so concurrent callers interl
 statements roughly the way D1 round trips would.
 
 Not covered by unit tests: the pages themselves. Vitest cannot render async server components
-(the Next.js testing guide says so), so they are left for the Playwright run.
+(the Next.js testing guide says so), so they are left for the Playwright run. Until then, the cart
+flow (add, refuse past stock, change quantity, remove, empty state, header count) was clicked
+through in Chromium with a throwaway script, against `next dev` and against the workerd preview.
 
 ## Environment notes
 

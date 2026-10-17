@@ -7,7 +7,11 @@ coverage/
 playwright-report/
 test-results/
 .env*
-.dev.vars
+.dev.vars*
 *.sqlite
 *.sqlite3
+*.tsbuildinfo
+*.pem
+next-env.d.ts
+npm-debug.log*
 .DS_Store

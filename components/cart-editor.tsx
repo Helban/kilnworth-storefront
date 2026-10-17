@@ -8,6 +8,7 @@ import { browserApi } from "@/lib/api/client";
 import { MAX_LINE_QUANTITY, type Cart, type CartLineBody } from "@/lib/api/contract";
 import { formatPrice } from "@/lib/money";
 import { describeFailure } from "./fetch-failure";
+import { HoldCartButton } from "./hold-cart-button";
 
 export function CartEditor({ initialCart }: { initialCart: Cart }) {
   const router = useRouter();
@@ -78,6 +79,9 @@ export function CartEditor({ initialCart }: { initialCart: Cart }) {
           <dd>{formatPrice(cart.totalCents)}</dd>
         </div>
       </dl>
+      <div className="mt-6 flex justify-end">
+        <HoldCartButton label="Check out" />
+      </div>
     </div>
   );
 }

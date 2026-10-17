@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.open-next/
+.wrangler/
+out/
+coverage/
+playwright-report/
+test-results/
+.env*
+.dev.vars
+*.sqlite
+*.sqlite3
+.DS_Store

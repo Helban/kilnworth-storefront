@@ -1,8 +1,9 @@
 # Kilnworth Studio storefront
 
 A small Next.js shop for a fictional ceramics workshop, built to run on Cloudflare Workers with
-D1. Work in progress: catalog, cart, the stock hold at checkout and the handoff to Stripe Checkout
-work. Order confirmation through Stripe's webhook does not exist yet.
+D1. The purchase path works end to end: catalog, cart, a ten-minute stock hold at checkout, Stripe
+Checkout, and order confirmation through Stripe's webhook. The full README comes with the last
+change; `NOTES.md` has the details so far.
 
 Payments run in Stripe test mode only. The app refuses to start a payment with anything but a
 Stripe test key, so no real money can move.

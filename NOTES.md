@@ -12,7 +12,7 @@ Update it in the same pull request as the change it describes.
 | Cart | Done, see "Cart" below |
 | Stock reservations at checkout | Done, see "Reservations" below |
 | Checkout form, terms consent, orders, Stripe handoff | Done, see "Checkout and payment handoff" below |
-| Stripe webhook, order confirmation | Not started |
+| Stripe webhook, order confirmation | Done, see "Payment confirmation" below |
 | README, e2e tests | Not started |
 
 ## Platform check
@@ -247,8 +247,9 @@ before that point. The brief says "around 10 minutes"; this is the one place it 
 
 Known gap: when a shopper comes back from Stripe and submits again, the earlier pending order is
 marked `superseded`, but its Stripe session is not expired through the API. With two tabs open, a
-shopper could pay both sessions. The webhook (next slice) has to treat a payment for a superseded
-order as needing review.
+shopper could pay both sessions. The webhook marks a payment for a superseded order
+`needs_review` and leaves stock alone (see below); expiring the old session at resubmission would
+close the gap properly.
 
 Tests use stripe-mock (`stripe/stripe-mock`, pinned by digest in `test/stripe-mock.ts` and in the
 `stripe-mock` npm script). `test/global-setup.ts` uses a running instance on port 12111 or starts
@@ -256,6 +257,67 @@ one with Docker for the run and stops it after. stripe-mock checks each request 
 OpenAPI spec and answers with fixture objects, so it proves the request is well formed. It does
 not prove amounts or behaviour: the session it returns does not echo our line items. Not verified
 against a real Stripe test account, because no key exists in this environment.
+
+## Payment confirmation
+
+An order is confirmed only by `POST /api/stripe/webhook`, never by the browser coming back from
+Stripe. The route reads the raw body, verifies `Stripe-Signature` with
+`constructEventAsync` and the SDK's SubtleCrypto provider (the same code path in Node and
+workerd), and refuses anything else with 400. Refusals are logged without the secret.
+
+Idempotency (`lib/store/payments.ts`): every event's changes run in one D1 batch whose first
+statement is a plain `INSERT INTO stripe_events (id, ...)`. A second delivery of the same event
+fails on the primary key, and because the batch is a transaction, none of it applies. Before the
+batch there is a quick "seen this id?" check; after a failed batch the same check tells a
+concurrent duplicate apart from a real error, so no error message is parsed. Tested: the same
+event twice (second answer `duplicate`, stock taken once, one event row) and five copies at once
+(exactly one `paid`). I also checked the test by breaking the code: with `INSERT OR IGNORE`
+instead, the five-copies test fails.
+
+What `checkout.session.completed` does when the session is paid. The hold's units come off the
+shelf (`available` and `reserved` both go down), the hold becomes `converted` and the order
+`paid`, but only if the order is still the pending one for its hold, the hold is still active,
+and the session id, amount and currency match what the order was created with. If anything does
+not line up, the order becomes `needs_review` and stock is left alone. Money was taken, so a
+person has to check stock and confirm or refund. Covered by tests: a superseded order paid from a
+second tab, a hold that lapsed before the webhook arrived, a different amount.
+
+`checkout.session.expired` releases the hold and marks the order `expired`, but only for the order
+that is still pending. A superseded order's session expiring does not free the stock the newer
+order relies on (tested). `async_payment_succeeded` and `async_payment_failed` are handled the
+same way as completed and expired, in case a delayed payment method is ever switched on;
+`completed` with `payment_status: "unpaid"` waits.
+
+Stripe's `success_url` is `/checkout/complete?order=<id>`. That route clears the shopper's cart
+and hold cookies (the cart is bought) and redirects to `/orders/<id>`. While the order is still
+`pending_payment`, that page polls `GET /api/orders/<id>` every two seconds for a minute and
+re-renders once the webhook has landed.
+
+Who can see an order: guest checkout has no accounts, so an order belongs to the browser that
+placed it. Its id (a random UUID) is kept in an `HttpOnly` cookie named `order`, `SameSite=Lax` so
+it survives the redirect back from Stripe. `GET /api/orders/<id>` answers 404 to any other
+browser, the same as for an order that does not exist. Only the latest order per browser is
+viewable this way.
+
+Checked end to end in Chromium, against `next dev` and the workerd preview: buy the moon jar
+through the form, land on the confirmation page ("Waiting for payment confirmation", cart now
+empty), send a `checkout.session.completed` signed with the SDK's test-header helper, and watch
+the page switch to "Thank you, your order is confirmed" by itself. A second delivery answered
+`duplicate`, the jar showed "Sold out" with `available 0, reserved 0`, and a different browser got
+404 for the order.
+
+Not verified: a real Stripe test account delivering webhooks (for example through
+`stripe listen`). No key exists here.
+
+Gaps a real shop would need to close:
+
+- `needs_review` orders have no screen. The brief rules out an admin panel. They can be listed with
+  `wrangler d1 execute DB --command "SELECT * FROM orders WHERE status = 'needs_review'"`, and
+  the webhook logs a warning for each.
+- No refunds, emails or receipts are sent.
+- If a webhook arrives more than five minutes after the Stripe session expired, the hold has
+  already been released, and the order goes to `needs_review` even though the stock may still be
+  there.
 
 ## npm audit
 

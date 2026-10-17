@@ -34,3 +34,16 @@ export async function findProductBySlug(
     .bind(slug)
     .first<ProductRecord>();
 }
+
+export async function findProductsBySlugs(
+  db: SqlDatabase,
+  slugs: readonly string[],
+): Promise<ProductRecord[]> {
+  if (slugs.length === 0) return [];
+  const placeholders = slugs.map(() => "?").join(", ");
+  const { results } = await db
+    .prepare(`SELECT ${PRODUCT_COLUMNS} FROM products WHERE slug IN (${placeholders})`)
+    .bind(...slugs)
+    .all<ProductRecord>();
+  return results;
+}

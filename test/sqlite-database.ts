@@ -9,7 +9,9 @@ const MIGRATIONS_DIR = join(import.meta.dirname, "..", "migrations");
 // An in-memory SQLite database with every migration applied, behind the same interface the store
 // uses for D1. Each call yields to the event loop first, the way a D1 round trip would, so
 // concurrent callers really do interleave between statements.
-export function createTestDatabase(): SqlDatabase & { sqlite: DatabaseSync } {
+export type TestDatabase = SqlDatabase & { sqlite: DatabaseSync };
+
+export function createTestDatabase(): TestDatabase {
   const sqlite = new DatabaseSync(":memory:");
   for (const file of readdirSync(MIGRATIONS_DIR).filter((name) => name.endsWith(".sql")).sort()) {
     sqlite.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));

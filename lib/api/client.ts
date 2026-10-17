@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { apiErrorSchema, productDetailSchema, productListSchema } from "./contract";
+import { apiErrorSchema, cartBodySchema, productDetailSchema, productListSchema } from "./contract";
 
 // The one module the UI uses to talk to the API. Every response is checked against the contract
 // before the UI sees it, and every failure comes back as a value the caller has to handle.
@@ -18,6 +18,11 @@ export function createApiClient(send: ApiTransport) {
     listProducts: () => request(send, "/api/products", productListSchema),
     getProduct: (slug: string) =>
       request(send, `/api/products/${encodeURIComponent(slug)}`, productDetailSchema),
+    getCart: () => request(send, "/api/cart", cartBodySchema),
+    addToCart: (slug: string, quantity: number) =>
+      request(send, "/api/cart/lines", cartBodySchema, jsonBody("POST", { slug, quantity })),
+    setCartQuantity: (slug: string, quantity: number) =>
+      request(send, `/api/cart/lines/${encodeURIComponent(slug)}`, cartBodySchema, jsonBody("PUT", { quantity })),
   };
 }
 
@@ -61,6 +66,10 @@ async function request<T>(
     return { ok: false, failure: { kind: "contract", path, issues } };
   }
   return { ok: true, data: parsed.data };
+}
+
+function jsonBody(method: "POST" | "PUT", payload: unknown): RequestInit {
+  return { method, headers: { "content-type": "application/json" }, body: JSON.stringify(payload) };
 }
 
 async function readJson(response: Response): Promise<unknown> {

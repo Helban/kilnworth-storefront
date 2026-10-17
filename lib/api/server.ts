@@ -1,5 +1,6 @@
 import "server-only";
 import { connection } from "next/server";
+import { GET as getCartRoute } from "@/app/api/cart/route";
 import { GET as getProductRoute } from "@/app/api/products/[slug]/route";
 import { GET as listProductsRoute } from "@/app/api/products/route";
 import { createApiClient, type ApiClient } from "./client";
@@ -22,6 +23,9 @@ async function sendInProcess(path: string): Promise<Response> {
   const { pathname } = new URL(path, "http://in-process.invalid");
   try {
     if (pathname === "/api/products") return await listProductsRoute();
+    // The cart handler reads the shopper's cookie through next/headers, which here is the cookie
+    // on the page request being rendered.
+    if (pathname === "/api/cart") return await getCartRoute();
     const productMatch = PRODUCT_PATH.exec(pathname);
     if (productMatch) {
       const params = Promise.resolve({ slug: decodeURIComponent(productMatch[1]) });

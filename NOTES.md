@@ -11,8 +11,8 @@ Update it in the same pull request as the change it describes.
 | Catalog, API, typed client | Done, see "Catalog" below |
 | Cart | Done, see "Cart" below |
 | Stock reservations at checkout | Done, see "Reservations" below |
-| Checkout form, terms consent, orders | Not started |
-| Stripe Checkout (test mode), webhook | Not started |
+| Checkout form, terms consent, orders, Stripe handoff | Done, see "Checkout and payment handoff" below |
+| Stripe webhook, order confirmation | Not started |
 | README, e2e tests | Not started |
 
 ## Platform check
@@ -135,14 +135,31 @@ Both are open questions for the shop owner; Stripe Tax would be the obvious rout
 
 ### Local D1 state
 
-The local D1 database lives in `node_modules/.cache/wrangler-state`, not wrangler's default
-`.wrangler/state`. With the default, an open browser tab on `next dev` reloaded itself several
-times a second. Every D1 read touches the SQLite `-wal` and `-shm` files, Turbopack watches the
-project root, and each change triggered a Fast Refresh rebuild and a reload, which read D1 again.
-Moving the files outside the watched tree stopped it (52 navigations in 6 seconds before, 2 after,
-measured with an idle Chromium tab). Turbopack has no setting to ignore a directory.
-`next.config.ts`, `npm run db:migrate` and `npm run preview` all point at the same directory, so
-they share one database. `npm ci` deletes it; run `npm run db:migrate` again afterwards.
+The local D1 database lives in `.next/cache/wrangler-state`, not wrangler's default
+`.wrangler/state`. `next.config.ts`, `npm run db:migrate` and `npm run preview` all point there, so
+they share one database. `next build` leaves `.next/cache` alone (checked), but deleting `.next`
+deletes the local database; run `npm run db:migrate` again afterwards.
+
+Why it moved. With the default location, an open browser tab on `next dev` reloaded several
+times a second (52 navigations in 6 seconds, measured with an idle Chromium tab). Every D1 query
+creates or touches SQLite `-wal` and `-shm` files, Turbopack watches the project tree, and each
+change set off a Fast Refresh rebuild and a reload, which queried D1 again. Turbopack has no
+setting to ignore a directory, but it does ignore its own `.next`. With the state there, 30 API
+requests with a tab open caused 0 recompiles.
+
+My first attempt, `node_modules/.cache`, looked fine in a short test and was wrong. On a longer
+run Turbopack reacted to the `-wal` and `-shm` files appearing there as well. That short test was
+also skewed by the second problem below.
+
+The second runtime. `initOpenNextCloudflareForDev()` starts wrangler's local runtime
+asynchronously. If a request reaches `getCloudflareContext({ async: true })` before it has
+finished, the adapter starts a second runtime of its own, without the options passed to the
+first one, so with wrangler's default state directory and an empty database. Whichever finished
+last served every request afterwards. In practice that meant either "no such table: products" or
+the reload loop, depending on timing. `next.config.ts` now exports an async config that awaits the
+initialisation in the dev-server phase only. After the change, both workerd processes that
+`next dev` starts open `.next/cache/wrangler-state` (checked in `/proc/<pid>/fd`), and no
+`.wrangler/` directory appears.
 
 ## Reservations
 
@@ -191,6 +208,55 @@ The time left on `/checkout` is computed when the page renders and does not tick
 open goes stale; the stock re-check before payment (next slice) is what actually protects the
 shopper.
 
+## Checkout and payment handoff
+
+`POST /api/checkout` works in this order:
+
+1. Refuse a foreign `Origin` (403) or a non-JSON body (415).
+2. Validate the details with `checkoutDetailsSchema` (`lib/api/contract.ts`). Anything wrong is a
+   422 with one message per field, before the database or Stripe is touched. `acceptTerms` must
+   be the boolean `true`; a missing field, `"true"`, `"on"`, `1` and `false` are all refused
+   (tested).
+3. Refuse with 503 if Stripe is not configured with test-mode values.
+4. Re-check the stock: keep the shopper's hold if it still covers the cart, otherwise hold the cart
+   afresh. A shortfall is a 409 naming the pieces, with no order and no Stripe call (tested).
+5. Extend the hold to outlive the Stripe session (see below).
+6. Store the order with the prices from D1 and `terms_accepted_at` set to the request time.
+7. Create the Stripe Checkout Session and answer 201 with its URL. The browser goes there.
+
+The checkout form validates with the same zod schema before sending, so the messages match the
+server's. On a failed submit, focus moves to the first invalid field in visual order. The
+messages are rendered (with `flushSync`) before focus moves, so a screen reader announces the
+field together with the error that `aria-describedby` now points to. The submit button is never
+disabled to stand in for validation. I went through it in Chromium with the keyboard only: empty
+submit, focus on Email with hint and error read out, the terms checkbox ticked with Space, Tab to
+the button, Enter, redirect to the Stripe URL.
+
+Stripe settings come from the Worker environment (`.dev.vars` locally, `wrangler secret put` in
+production; `.dev.vars.example` lists them). `lib/payments/stripe.ts` refuses anything but an
+`sk_test_` key, so a live key configured by mistake disables checkout instead of taking money.
+The SDK uses its fetch HTTP client, and its `workerd` export condition gives the Worker the
+fetch-based build; the OpenNext preview created sessions against stripe-mock without trouble.
+Each session request carries an idempotency key per order.
+
+The hold is longer than ten minutes once the shopper reaches payment. Stripe refuses a Checkout
+Session that expires sooner than 30 minutes after creation, and the hold has to outlive the
+session, or someone could pay for a piece that was already released. So at handoff the hold is
+extended to the session's expiry plus 5 minutes. The ten-minute hold still applies to everything
+before that point. The brief says "around 10 minutes"; this is the one place it is exceeded.
+
+Known gap: when a shopper comes back from Stripe and submits again, the earlier pending order is
+marked `superseded`, but its Stripe session is not expired through the API. With two tabs open, a
+shopper could pay both sessions. The webhook (next slice) has to treat a payment for a superseded
+order as needing review.
+
+Tests use stripe-mock (`stripe/stripe-mock`, pinned by digest in `test/stripe-mock.ts` and in the
+`stripe-mock` npm script). `test/global-setup.ts` uses a running instance on port 12111 or starts
+one with Docker for the run and stops it after. stripe-mock checks each request against Stripe's
+OpenAPI spec and answers with fixture objects, so it proves the request is well formed. It does
+not prove amounts or behaviour: the session it returns does not echo our line items. Not verified
+against a real Stripe test account, because no key exists in this environment.
+
 ## npm audit
 
 `npm audit` reports 5 high-severity findings, all one chain:
@@ -230,5 +296,11 @@ through in Chromium with a throwaway script, against `next dev` and against the 
 
 - `opennext.js.org` is blocked by this container's network policy, so the adapter was set up from
   the templates and the `migrate` command source inside `node_modules/@opennextjs/cloudflare`.
-- The Docker CLI is installed but no daemon is running. This matters later for `stripe/stripe-mock`.
+- Docker: no daemon was running at the start of the session, but running `dockerd` started one,
+  and `stripe/stripe-mock` pulled and ran normally.
+- The container sets `HTTPS_PROXY`, and wrangler announces "We'll use your proxy for fetch
+  requests". Under `next dev` that broke the server's calls to stripe-mock on localhost
+  (`StripeConnectionError`); with the proxy variables unset for the dev server, they worked. I did
+  not dig into which component ignores `NO_PROXY`. On a machine without a proxy this should not
+  come up, but that is not verified.
 - Wrangler and Next.js try to send telemetry; those requests are refused here and are harmless.

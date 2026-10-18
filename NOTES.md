@@ -1,8 +1,8 @@
 # Handover notes
 
 Written for whoever picks this up next. It records what was built, what was checked and how, and
-what was not checked. Everything here was done on 2026-10-17 in a Linux container with Node
-22.22.0 and npm 10.9.4.
+what was not checked. The build was done on 2026-10-17 and the design pass on 2026-10-18, in a
+Linux container with Node 22.22.0 and npm 10.9.4.
 
 ## Status
 
@@ -17,6 +17,7 @@ Every item in the brief's scope is built. Nothing has been deployed.
 | Checkout form, terms consent (422), orders, Stripe handoff | Done |
 | Stripe webhook with signature check and idempotency, confirmation page | Done |
 | README, Playwright tests | Done |
+| Design pass from `DESIGN.md`, with real product photos | Done, see "Design pass" below |
 
 Definition of done, as last run on the final branch:
 
@@ -147,13 +148,12 @@ page status would mean dropping the loading state for that route, which the brie
 
 ### Images
 
-One 800x800 WebP per product in `public/products/<slug>.webp`, generated with ImageMagick as flat
-placeholders. Real photos at the same size and file name replace them with no code change.
-`images.unoptimized` is set because no resizing service is bound (that would be the Cloudflare
-Images binding). The product page shows the image at up to 480 CSS pixels, so 800 is close to 2x.
-Catalog tiles (about 250 CSS pixels) and cart thumbnails (80) download more than they show. With
-the placeholders that is about 3 KB each. With real photos, bind Cloudflare Images or export a
-smaller size.
+Each product has two photos in `public/products/`: `<slug>.webp` at 800x800 and
+`<slug>-400.webp` at 400x400, made by `scripts/import_product_photos.py`. The API names the
+800 file; the UI derives the 400 one from it (`lib/product-photos.ts`). Grid tiles load the 400 file
+with the 800 file as their 2x source; larger photos pick between the two by `sizes`; cart
+thumbnails take the 400 file only. `images.unoptimized` stays set because no resizing service is
+bound (that would be the Cloudflare Images binding).
 
 ## Cart
 
@@ -340,6 +340,84 @@ A second chain is fixed with an `overrides` entry: `@opennextjs/aws` pulls `@nod
 flag). The override moves it to `glob` 10.5.0, the patched release in the same major. The OpenNext
 build passes with it. Remove the override once `@opennextjs/aws` ships a fixed dependency.
 
+## Design pass
+
+`DESIGN.md` (on the `design-assets` branch) asked for a visual pass over the working shop: real
+photos, a palette taken from them, Newsreader and Public Sans, distinct layouts per category, and
+no change to behaviour, routes, API or tests. Screenshots of home, a product page, cart and
+checkout at 1440 and 390 px are in `docs/screenshots/`. They were taken from the production build
+running in workerd, at a device pixel ratio of 1.
+
+What changed:
+
+- `app/globals.css` defines the eight colour tokens and switches Tailwind's own colours off
+  (`--color-*: initial`), so a component cannot use anything else. Control styles
+  (`button-primary`, `button-secondary`, `field`, `text-link`, `name-link`) live there too.
+- Fonts come through `next/font/google`, which downloads them at build time and serves them from
+  the site itself, so the CSP's `font-src 'self'` still holds. The build needs to reach
+  fonts.googleapis.com; it could here.
+- Photos go through `components/product-photo.tsx`, a small client component around a plain
+  `<img>`. `next/image` accepts no `srcSet` and emits only `src` when images are unoptimized, so
+  the 400/800 pair is chosen by hand there; that is also where the fade-in lives.
+- Home opens with the intro and the moon jar, then four different category layouts: a four-column
+  grid for mugs and for bowls, two large tiles for vases, and alternating full-width rows for the
+  one-offs. The product page keeps the photo in view on desktop and adds a size, glaze and care
+  list. The cart puts totals beside the list on desktop. Checkout puts the summary in a white
+  panel on the right, and the order page leads with the status.
+- Loading placeholders no longer pulse, because only photo fades and the cart count may move.
+
+Checks run after the change:
+
+- Every token pair used for text clears 4.5:1 without changing a token. The lowest is `glaze` on
+  `bg` at 5.32:1; `ink-muted` on `bg` is 6.30:1; `clay` on `bg` is 6.82:1.
+- `npm run lint`, `npm run typecheck`, `npm test` (86) and `npm run test:e2e` (6, including the
+  axe scan) pass. No test was changed.
+- At 390 px, `scrollWidth` equals `clientWidth` on home, product, cart and checkout, so there is no
+  horizontal scroll.
+- Motion: a below-the-fold photo starts at opacity 0 and fades in over 200 ms; the cart count fades
+  in over 200 ms. With `prefers-reduced-motion: reduce`, photos are visible from the start and both
+  animations are cut to almost nothing. Checked in Chromium with each setting.
+- The full purchase (form, signed webhook, confirmation page) still works against `next dev`.
+
+Where I did not follow the brief, and why:
+
+- Input borders use `ink-muted`, not `line`. `line` on white is 1.46:1, and the edge of a form
+  control needs 3:1 against what surrounds it (WCAG 1.4.11). The brief's contrast rule covers only
+  text, so I used an existing token instead of changing `line`, which stays as the hairline colour.
+- The order page keeps its existing headlines ("Thank you, your order is confirmed", "Waiting for
+  payment confirmation") because the e2e tests assert them. "Paid" follows right under the
+  headline in `glaze` at 24 px, so the status still comes first.
+- The largest photo above the fold (the home hero and the product page photo) does not fade in. A
+  photo at opacity 0 does not count as painted, so fading it would push Largest Contentful Paint
+  back until JavaScript has loaded. Every other photo fades, and a `<noscript>` rule makes them
+  visible when JavaScript is off (checked: with JavaScript disabled, their computed opacity is 1).
+- The cart count fades the new number in; it does not crossfade the old number out. A true
+  crossfade needs both numbers on screen and a timer to remove the old one, which seemed too much
+  machinery for one digit.
+- Newsreader loads as the full variable font (weights 200 to 800), because `next/font` only offers
+  the optical-size axis with the variable font. The pages use 400 for headings and 500 for the
+  wordmark.
+- The size, glaze and care lists live in `lib/product-details.ts`, copied from the descriptions,
+  because the API was to stay unchanged. They can drift from the description text if product copy
+  changes; the fix then is a column in `products` and a field in the contract. Only the ash glaze
+  mug's description mentions care, so only it has a care row.
+- On checkout the order summary comes first in the page source and moves to the right-hand column
+  on desktop. A phone then shows what is being bought before the form and the pay button.
+- The test-mode notice is one line ("Test mode: no real payment is taken. Test card 4242 4242 4242
+  4242."). The expiry date and CVC hint moved out to keep it to one line; the README still has it.
+- Sold-out photos show at 50% opacity; the brief says "reduced" without a number.
+- Spacing follows 8 px steps, with 4 px in two places: between a product name and its stock line,
+  and to align the terms checkbox with its label.
+
+Found while checking that `<noscript>` rule, and not caused by this pass: with JavaScript off, the
+pages never get past their loading placeholder. `loading.tsx` makes Next.js stream each page, and
+React needs JavaScript to swap the streamed content into place, so it stays in a hidden `<div>`.
+That has been true since the catalog slice added loading states. It is listed under open questions.
+
+One more local development pitfall: after switching to this branch, `next dev` kept serving the
+previous branch's compiled `globals.css` from Turbopack's cache in `.next/dev`, with no error.
+Deleting `.next/dev` fixed it; leave `.next/cache` alone, because the local database lives there.
+
 ## Not verified
 
 - A deploy to Cloudflare, and anything on the real edge. All runtime checks used local workerd
@@ -348,6 +426,8 @@ build passes with it. Remove the override once `@opennextjs/aws` ships a fixed d
   and webhooks delivered by Stripe (for example through `stripe listen`). No key exists here.
 - Browsers other than Chromium 141, and screen readers. The accessibility checks are axe, the
   keyboard tests and reading the markup, not a screen reader session.
+- The design on real devices and at sizes other than 1440 and 390 px. Fonts were checked only in
+  Chromium on Linux.
 - `next dev` on a machine without an HTTPS proxy (see Environment notes).
 
 ## Open questions
@@ -362,6 +442,9 @@ build passes with it. Remove the override once `@opennextjs/aws` ships a fixed d
   session expired finds the hold released and sends the order to `needs_review`, even if the stock
   is still there.
 - Should old Stripe sessions be expired when a shopper resubmits checkout?
+- Pages show only their loading placeholder when JavaScript is off (see "Design pass"). Dropping
+  `loading.tsx` from the catalog and product routes would fix that and bring back real 404s for
+  unknown products, at the cost of a blank wait on slow navigations. Which matters more here?
 
 ## Environment notes
 

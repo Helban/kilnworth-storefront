@@ -10,6 +10,8 @@ about making sure only one of them gets it.
 
 Payments run in Stripe test mode only. No real money can move; see "Test mode" below.
 
+Screenshots of the main pages at 1440 and 390 px wide are in `docs/screenshots/`.
+
 ## What a shopper can do
 
 - Browse the catalog, grouped into mugs, bowls, vases and one-off pieces, and see how many of

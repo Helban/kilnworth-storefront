@@ -17,13 +17,15 @@ export async function getServerApi(): Promise<ApiClient> {
   return createApiClient(sendInProcess);
 }
 
+const IN_PROCESS_ORIGIN = "http://in-process.invalid";
 const PRODUCT_PATH = /^\/api\/products\/([^/]+)$/;
 const ORDER_PATH = /^\/api\/orders\/([^/]+)$/;
 
 // Matched by hand: fine for the few GET routes server components read. If this grows past a
 // handful, have server components call lib/store directly instead.
 async function sendInProcess(path: string): Promise<Response> {
-  const { pathname } = new URL(path, "http://in-process.invalid");
+  const url = new URL(path, IN_PROCESS_ORIGIN);
+  const { pathname } = url;
   try {
     if (pathname === "/api/products") return await listProductsRoute();
     // The cart and checkout handlers read the shopper's cookies through next/headers, which here
@@ -33,15 +35,16 @@ async function sendInProcess(path: string): Promise<Response> {
     const orderMatch = ORDER_PATH.exec(pathname);
     if (orderMatch) {
       const params = Promise.resolve({ id: decodeURIComponent(orderMatch[1]) });
-      return await getOrderRoute(new Request(new URL(path, "http://in-process.invalid")), { params });
+      return await getOrderRoute(new Request(url), { params });
     }
     const productMatch = PRODUCT_PATH.exec(pathname);
     if (productMatch) {
       const params = Promise.resolve({ slug: decodeURIComponent(productMatch[1]) });
-      return await getProductRoute(new Request(new URL(path, "http://in-process.invalid")), { params });
+      return await getProductRoute(new Request(url), { params });
     }
   } catch (error) {
     // Over HTTP an unhandled error in a route handler becomes a bare 500; mirror that here.
+    // eslint-disable-next-line no-console -- server log the platform collects; there is no logger module
     console.error("Route handler failed", pathname, error);
     return new Response(null, { status: 500, statusText: "Internal Server Error" });
   }

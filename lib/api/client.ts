@@ -7,7 +7,13 @@ import {
   paymentBodySchema,
   productDetailSchema,
   productListSchema,
+  type CartBody,
+  type CheckoutBody,
   type CheckoutDetails,
+  type OrderBody,
+  type PaymentBody,
+  type ProductDetailBody,
+  type ProductListBody,
 } from "./contract";
 
 // The one module the UI uses to talk to the API. Every response is checked against the contract
@@ -22,7 +28,19 @@ export type ApiResult<T> = { ok: true; data: T } | { ok: false; failure: ApiFail
 
 export type ApiTransport = (path: string, init?: RequestInit) => Promise<Response>;
 
-export function createApiClient(send: ApiTransport) {
+export interface ApiClient {
+  listProducts(): Promise<ApiResult<ProductListBody>>;
+  getProduct(slug: string): Promise<ApiResult<ProductDetailBody>>;
+  getCart(): Promise<ApiResult<CartBody>>;
+  addToCart(slug: string, quantity: number): Promise<ApiResult<CartBody>>;
+  setCartQuantity(slug: string, quantity: number): Promise<ApiResult<CartBody>>;
+  getCheckout(): Promise<ApiResult<CheckoutBody>>;
+  holdCart(): Promise<ApiResult<CheckoutBody>>;
+  startPayment(details: CheckoutDetails): Promise<ApiResult<PaymentBody>>;
+  getOrder(orderId: string, signal?: AbortSignal): Promise<ApiResult<OrderBody>>;
+}
+
+export function createApiClient(send: ApiTransport): ApiClient {
   return {
     listProducts: () => request(send, "/api/products", productListSchema),
     getProduct: (slug: string) =>
@@ -42,8 +60,6 @@ export function createApiClient(send: ApiTransport) {
   };
 }
 
-export type ApiClient = ReturnType<typeof createApiClient>;
-
 export const browserApi = createApiClient((path, init) => fetch(path, init));
 
 async function request<T>(
@@ -52,9 +68,9 @@ async function request<T>(
   schema: z.ZodType<T>,
   init?: RequestInit,
 ): Promise<ApiResult<T>> {
-  let response: Response;
+  let reply: Response;
   try {
-    response = await send(path, init);
+    reply = await send(path, init);
   } catch (error) {
     // fetch() rejects with a TypeError when the request never got a response. An AbortError means
     // the caller cancelled and is rethrown for the caller to ignore.
@@ -62,16 +78,16 @@ async function request<T>(
     throw error;
   }
 
-  const body = await readJson(response);
-  if (!response.ok) {
+  const body = await readJson(reply);
+  if (!reply.ok) {
     const errorBody = apiErrorSchema.safeParse(body);
     return {
       ok: false,
       failure: {
         kind: "http",
-        status: response.status,
+        status: reply.status,
         code: errorBody.success ? errorBody.data.error.code : "unknown",
-        message: errorBody.success ? errorBody.data.error.message : response.statusText,
+        message: errorBody.success ? errorBody.data.error.message : reply.statusText,
         fields: errorBody.success ? errorBody.data.error.fields : undefined,
       },
     };
@@ -80,6 +96,7 @@ async function request<T>(
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
+    // eslint-disable-next-line no-console -- a contract break must be visible in the browser console
     console.error("API response broke the contract", path, issues);
     return { ok: false, failure: { kind: "contract", path, issues } };
   }
@@ -90,9 +107,9 @@ function jsonBody(method: "POST" | "PUT", payload: unknown): RequestInit {
   return { method, headers: { "content-type": "application/json" }, body: JSON.stringify(payload) };
 }
 
-async function readJson(response: Response): Promise<unknown> {
+async function readJson(reply: Response): Promise<unknown> {
   try {
-    return await response.json();
+    return await reply.json();
   } catch (error) {
     // A body that is not JSON at all fails the contract the same way a wrong shape does.
     if (error instanceof SyntaxError) return undefined;

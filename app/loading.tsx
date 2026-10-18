@@ -1,4 +1,4 @@
-// Static placeholders: the design allows only photo fades and the cart count to move.
+// Static placeholders: the design allows only photo fades to move.
 export default function CatalogLoading() {
   return (
     <div role="status">

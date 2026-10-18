@@ -69,8 +69,8 @@ function StatusMessage({ order }: { order: Order }) {
           <h1 className="text-4xl sm:text-5xl">Thank you, your order is confirmed</h1>
           <p className="mt-4 text-2xl text-glaze">Paid</p>
           <p className="mt-4 max-w-[65ch] text-ink-muted">
-            Stripe confirmed the payment (in test mode). A real shop would email {order.email} now; this demo sends
-            nothing and ships nothing.
+            Stripe confirmed the payment in test mode. The confirmation would go to {order.email}, but this demo
+            sends no email and ships nothing.
           </p>
         </>
       );

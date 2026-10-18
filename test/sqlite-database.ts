@@ -46,6 +46,7 @@ class SqliteStatement implements SqlStatement {
     return new SqliteStatement(this.sqlite, this.sql, values);
   }
 
+  // The `as Row` casts are deliberate: D1's own first<T>() and all<T>() trust the caller's T the same way.
   async first<Row>(): Promise<Row | null> {
     await setImmediate();
     return (this.sqlite.prepare(this.sql).get(...this.values) as Row | undefined) ?? null;

@@ -37,16 +37,23 @@ test("a shopper buys the moon jar and the webhook confirms the order", async ({ 
 });
 
 test("a second shopper cannot check out a piece someone else is holding", async ({ browser }) => {
-  const first = await (await browser.newContext()).newPage();
-  const second = await (await browser.newContext()).newPage();
-  await addToCart(first, "ripple-platter");
-  await addToCart(second, "ripple-platter");
+  const firstShopper = await browser.newContext();
+  const secondShopper = await browser.newContext();
+  try {
+    const first = await firstShopper.newPage();
+    const second = await secondShopper.newPage();
+    await addToCart(first, "ripple-platter");
+    await addToCart(second, "ripple-platter");
 
-  await startCheckout(first);
-  await second.goto("/cart");
-  await second.getByRole("button", { name: "Check out" }).click();
+    await startCheckout(first);
+    await second.goto("/cart");
+    await second.getByRole("button", { name: "Check out" }).click();
 
-  await expect(second.getByText("Not enough left of: Ripple platter.", { exact: false })).toBeVisible();
-  await second.goto("/products/ripple-platter");
-  await expect(second.getByText("Sold out")).toBeVisible();
+    await expect(second.getByText("Not enough left of: Ripple platter.", { exact: false })).toBeVisible();
+    await second.goto("/products/ripple-platter");
+    await expect(second.getByText("Sold out")).toBeVisible();
+  } finally {
+    await firstShopper.close();
+    await secondShopper.close();
+  }
 });

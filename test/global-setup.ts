@@ -5,15 +5,17 @@ import { STRIPE_MOCK_IMAGE, STRIPE_MOCK_URL } from "./stripe-mock";
 
 const run = promisify(execFile);
 const STARTUP_ATTEMPTS = 30;
+const STARTUP_POLL_MS = 500;
+const STRIPE_MOCK_CONTAINER_PORT = 12111;
 let startedContainer: string | null = null;
 
 // Payment tests need stripe-mock. Use one that is already running (CI service, `npm run
 // stripe-mock`), or start the pinned image with Docker for this run and stop it afterwards.
-export async function setup() {
+export async function setup(): Promise<void> {
   if (await isReachable(STRIPE_MOCK_URL)) return;
   const port = new URL(STRIPE_MOCK_URL).port;
   try {
-    const { stdout } = await run("docker", ["run", "-d", "--rm", "-p", `${port}:12111`, STRIPE_MOCK_IMAGE]);
+    const { stdout } = await run("docker", ["run", "-d", "--rm", "-p", `${port}:${STRIPE_MOCK_CONTAINER_PORT}`, STRIPE_MOCK_IMAGE]);
     startedContainer = stdout.trim();
   } catch (error) {
     throw new Error(
@@ -24,12 +26,12 @@ export async function setup() {
   }
   for (let attempt = 0; attempt < STARTUP_ATTEMPTS; attempt += 1) {
     if (await isReachable(STRIPE_MOCK_URL)) return;
-    await sleep(500);
+    await sleep(STARTUP_POLL_MS);
   }
   throw new Error(`stripe-mock did not answer at ${STRIPE_MOCK_URL} after starting.`);
 }
 
-export async function teardown() {
+export async function teardown(): Promise<void> {
   if (startedContainer) await run("docker", ["stop", startedContainer]);
 }
 

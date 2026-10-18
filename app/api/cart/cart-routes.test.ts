@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiErrorSchema, cartBodySchema } from "@/lib/api/contract";
 import { SHIPPING_CENTS } from "@/lib/cart/pricing";
-import { createCookieJar } from "@/test/cookie-jar";
+import { createCookieJar, type CookieJar } from "@/test/cookie-jar";
 import { createTestDatabase, type TestDatabase } from "@/test/sqlite-database";
 import { POST as addLine } from "./lines/route";
 import { PUT as setLine } from "./lines/[slug]/route";
 import { GET as getCart } from "./route";
 
 let db: TestDatabase;
-let jar: ReturnType<typeof createCookieJar>;
-vi.mock("@/lib/db", () => ({ getDbWithExpiredHoldsReleased: async () => db }));
-vi.mock("next/headers", () => ({ cookies: async () => jar }));
+let jar: CookieJar;
+vi.mock("@/lib/db", () => ({ getDbWithExpiredHoldsReleased: () => Promise.resolve(db) }));
+vi.mock("next/headers", () => ({ cookies: () => Promise.resolve(jar) }));
 
 function jsonRequest(method: string, path: string, payload: unknown, headers: Record<string, string> = {}) {
   return new Request(`http://shop.test${path}`, {
@@ -24,8 +24,8 @@ function add(slug: string, quantity: number, headers?: Record<string, string>) {
   return addLine(jsonRequest("POST", "/api/cart/lines", { slug, quantity }, headers));
 }
 
-async function cartFrom(response: Response) {
-  return cartBodySchema.parse(await response.json()).cart;
+async function cartFrom(cartReply: Response) {
+  return cartBodySchema.parse(await cartReply.json()).cart;
 }
 
 describe("cart routes", () => {
@@ -36,10 +36,10 @@ describe("cart routes", () => {
 
   it("adds to the cart, stores it in the cookie and returns it priced", async () => {
     await add("ash-glaze-mug", 2);
-    const response = await add("ash-glaze-mug", 1);
+    const addReply = await add("ash-glaze-mug", 1);
 
-    expect(response.status).toBe(200);
-    const cart = await cartFrom(response);
+    expect(addReply.status).toBe(200);
+    const cart = await cartFrom(addReply);
     expect(cart.lines).toEqual([expect.objectContaining({ slug: "ash-glaze-mug", quantity: 3, lineTotalCents: 11400 })]);
     expect(JSON.parse(jar.values.get("cart") ?? "")).toEqual([{ slug: "ash-glaze-mug", quantity: 3 }]);
   });
@@ -61,20 +61,20 @@ describe("cart routes", () => {
   });
 
   it("refuses more than is left with 409 and leaves the cookie alone", async () => {
-    const response = await add("moon-jar", 2);
+    const stockRefusal = await add("moon-jar", 2);
 
-    expect(response.status).toBe(409);
-    expect(await response.json()).toEqual({ error: { code: "insufficient_stock", message: "Only 1 left." } });
+    expect(stockRefusal.status).toBe(409);
+    expect(await stockRefusal.json()).toEqual({ error: { code: "insufficient_stock", message: "Only 1 left." } });
     expect(jar.values.has("cart")).toBe(false);
   });
 
   it("counts what is already in the cart against the stock, and says so", async () => {
     await add("tenmoku-ramen-bowl", 2);
 
-    const response = await add("tenmoku-ramen-bowl", 2);
+    const overStockReply = await add("tenmoku-ramen-bowl", 2);
 
-    expect(response.status).toBe(409);
-    expect(apiErrorSchema.parse(await response.json()).error.message).toBe(
+    expect(overStockReply.status).toBe(409);
+    expect(apiErrorSchema.parse(await overStockReply.json()).error.message).toBe(
       "Only 3 left, and your cart already has 2.",
     );
   });
@@ -89,17 +89,17 @@ describe("cart routes", () => {
     await add("moon-jar", 1);
     await add("ash-glaze-mug", 1);
 
-    const response = await setLine(jsonRequest("PUT", "/api/cart/lines/moon-jar", { quantity: 0 }), {
+    const removeReply = await setLine(jsonRequest("PUT", "/api/cart/lines/moon-jar", { quantity: 0 }), {
       params: Promise.resolve({ slug: "moon-jar" }),
     });
 
-    expect((await cartFrom(response)).lines.map((line) => line.slug)).toEqual(["ash-glaze-mug"]);
+    expect((await cartFrom(removeReply)).lines.map((line) => line.slug)).toEqual(["ash-glaze-mug"]);
   });
 
   it("refuses a request from another origin before touching the cart", async () => {
-    const response = await add("ash-glaze-mug", 1, { origin: "https://evil.test" });
+    const foreignOriginReply = await add("ash-glaze-mug", 1, { origin: "https://evil.test" });
 
-    expect(response.status).toBe(403);
+    expect(foreignOriginReply.status).toBe(403);
     expect(jar.values.has("cart")).toBe(false);
   });
 

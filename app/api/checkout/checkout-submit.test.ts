@@ -3,18 +3,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiErrorSchema, paymentBodySchema } from "@/lib/api/contract";
 import type { StripeSetup } from "@/lib/payments/stripe";
 import { releaseExpiredReservations, reserveStock } from "@/lib/store/reservations";
-import { createCookieJar } from "@/test/cookie-jar";
+import { createCookieJar, type CookieJar } from "@/test/cookie-jar";
 import { createTestDatabase, type TestDatabase } from "@/test/sqlite-database";
 import { stripeMockSetup } from "@/test/stripe-mock";
 import { POST as holdCart } from "./reservation/route";
 import { POST as submitCheckout } from "./route";
 
 let db: TestDatabase;
-let jar: ReturnType<typeof createCookieJar>;
+let jar: CookieJar;
 let payments: StripeSetup;
-vi.mock("@/lib/db", () => ({ getDbWithExpiredHoldsReleased: async () => db }));
-vi.mock("next/headers", () => ({ cookies: async () => jar }));
-vi.mock("@/lib/payments/env", () => ({ getStripe: async () => payments }));
+vi.mock("@/lib/db", () => ({ getDbWithExpiredHoldsReleased: () => Promise.resolve(db) }));
+vi.mock("next/headers", () => ({ cookies: () => Promise.resolve(jar) }));
+vi.mock("@/lib/payments/env", () => ({ getStripe: () => Promise.resolve(payments) }));
 
 const validDetails = {
   email: "ada@example.com",
@@ -57,10 +57,10 @@ describe("POST /api/checkout", () => {
     const withoutTerms: Partial<typeof validDetails> = { ...validDetails };
     delete withoutTerms.acceptTerms;
 
-    const response = await submit(withoutTerms);
+    const termsRejection = await submit(withoutTerms);
 
-    expect(response.status).toBe(422);
-    expect(apiErrorSchema.parse(await response.json()).error.fields).toEqual({
+    expect(termsRejection.status).toBe(422);
+    expect(apiErrorSchema.parse(await termsRejection.json()).error.fields).toEqual({
       acceptTerms: "Accept the terms of sale to continue.",
     });
     expect(createSession).not.toHaveBeenCalled();
@@ -70,18 +70,18 @@ describe("POST /api/checkout", () => {
   it.each([["the string \"true\"", "true"], ["\"on\"", "on"], ["1", 1], ["false", false]])(
     "does not count %s as accepting the terms",
     async (_label, acceptTerms) => {
-      const response = await submit({ ...validDetails, acceptTerms });
+      const lenientTermsReply = await submit({ ...validDetails, acceptTerms });
 
-      expect(response.status).toBe(422);
+      expect(lenientTermsReply.status).toBe(422);
       expect(rows("SELECT id FROM orders")).toEqual([]);
     },
   );
 
   it("names every field that needs fixing", async () => {
-    const response = await submit({ ...validDetails, email: "ada", state: "XX", postalCode: "9721" });
+    const fieldErrorsReply = await submit({ ...validDetails, email: "ada", state: "XX", postalCode: "9721" });
 
-    expect(response.status).toBe(422);
-    expect(Object.keys(apiErrorSchema.parse(await response.json()).error.fields ?? {}).sort()).toEqual([
+    expect(fieldErrorsReply.status).toBe(422);
+    expect(Object.keys(apiErrorSchema.parse(await fieldErrorsReply.json()).error.fields ?? {}).sort()).toEqual([
       "email",
       "postalCode",
       "state",
@@ -91,10 +91,10 @@ describe("POST /api/checkout", () => {
   it("hands a held cart to Stripe and stores the order with the time the terms were accepted", async () => {
     const before = Date.now();
 
-    const response = await submit(validDetails);
+    const paymentReply = await submit(validDetails);
 
-    expect(response.status).toBe(201);
-    expect(paymentBodySchema.parse(await response.json()).payment.redirectUrl).toMatch(/^https:\/\//);
+    expect(paymentReply.status).toBe(201);
+    expect(paymentBodySchema.parse(await paymentReply.json()).payment.redirectUrl).toMatch(/^https:\/\//);
     const [order] = rows("SELECT * FROM orders");
     expect(order).toMatchObject({
       status: "pending_payment",
@@ -103,6 +103,7 @@ describe("POST /api/checkout", () => {
       subtotal_cents: 34000 + 2 * 3800,
       shipping_cents: 900,
       total_cents: 34000 + 2 * 3800 + 900,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- vitest types asymmetric matchers as any
       stripe_session_id: expect.stringMatching(/^cs_/),
     });
     expect(jar.values.get("order")).toBe(order.id);
@@ -122,7 +123,7 @@ describe("POST /api/checkout", () => {
 
     const params = createSession.mock.lastCall?.[0];
     if (!params) throw new Error("expected a Checkout Session to be created");
-    expect(params.line_items?.map((item) => [item.price_data?.unit_amount, item.quantity])).toEqual([
+    expect(params.line_items?.map((lineItem) => [lineItem.price_data?.unit_amount, lineItem.quantity])).toEqual([
       [34000, 1],
       [3800, 2],
     ]);
@@ -139,10 +140,10 @@ describe("POST /api/checkout", () => {
     await releaseExpiredReservations(db, Date.now());
     await reserveStock(db, [{ slug: "moon-jar", quantity: 1 }], Date.now());
 
-    const response = await submit(validDetails);
+    const staleHoldRejection = await submit(validDetails);
 
-    expect(response.status).toBe(409);
-    expect(apiErrorSchema.parse(await response.json()).error.code).toBe("insufficient_stock");
+    expect(staleHoldRejection.status).toBe(409);
+    expect(apiErrorSchema.parse(await staleHoldRejection.json()).error.code).toBe("insufficient_stock");
     expect(createSession).not.toHaveBeenCalled();
     expect(rows("SELECT id FROM orders")).toEqual([]);
   });
@@ -159,10 +160,10 @@ describe("POST /api/checkout", () => {
     );
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const response = await submit(validDetails);
+    const providerFailureReply = await submit(validDetails);
 
-    expect(response.status).toBe(502);
-    expect(apiErrorSchema.parse(await response.json()).error.code).toBe("payment_provider_error");
+    expect(providerFailureReply.status).toBe(502);
+    expect(apiErrorSchema.parse(await providerFailureReply.json()).error.code).toBe("payment_provider_error");
     expect(rows("SELECT status FROM reservations")).toEqual([{ status: "active" }]);
     expect(rows("SELECT stripe_session_id FROM orders")).toEqual([{ stripe_session_id: null }]);
   });

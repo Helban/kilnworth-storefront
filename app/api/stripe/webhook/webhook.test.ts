@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { priceCart } from "@/lib/cart/pricing";
 import type { StripeSetup } from "@/lib/payments/stripe";
 import { attachStripeSession, createOrder } from "@/lib/store/orders";
@@ -11,8 +12,10 @@ import { POST as receiveWebhook } from "./route";
 
 let db: TestDatabase;
 let payments: StripeSetup;
-vi.mock("@/lib/db", () => ({ getDb: async () => db }));
-vi.mock("@/lib/payments/env", () => ({ getStripe: async () => payments }));
+vi.mock("@/lib/db", () => ({ getDb: () => Promise.resolve(db) }));
+vi.mock("@/lib/payments/env", () => ({ getStripe: () => Promise.resolve(payments) }));
+
+const webhookReplySchema = z.object({ outcome: z.string().optional() });
 
 const NOW = Date.now();
 const ADDRESS = { name: "Ada Lovelace", line1: "12 Kiln Lane", line2: "", city: "Portland", state: "OR", postalCode: "97214" };
@@ -77,8 +80,8 @@ async function signedRequest(payload: string, secret = TEST_WEBHOOK_SECRET) {
 }
 
 async function deliver(event: object) {
-  const response = await receiveWebhook(await signedRequest(JSON.stringify(event)));
-  return { status: response.status, body: (await response.json()) as { outcome?: string } };
+  const webhookReply = await receiveWebhook(await signedRequest(JSON.stringify(event)));
+  return { status: webhookReply.status, body: webhookReplySchema.parse(await webhookReply.json()) };
 }
 
 function stockOf(slug: string) {
@@ -143,9 +146,9 @@ describe("POST /api/stripe/webhook", () => {
     const order = await placeOrder([{ slug: "moon-jar", quantity: 1 }]);
     const payload = JSON.stringify(sessionEvent("checkout.session.completed", order));
 
-    const response = await receiveWebhook(await signedRequest(payload, "whsec_someone_else"));
+    const wrongSecretReply = await receiveWebhook(await signedRequest(payload, "whsec_someone_else"));
 
-    expect(response.status).toBe(400);
+    expect(wrongSecretReply.status).toBe(400);
     expect(orderStatus(order.orderId)).toBe("pending_payment");
     expect(stockOf("moon-jar")).toEqual({ available: 1, reserved: 1 });
   });
@@ -155,18 +158,18 @@ describe("POST /api/stripe/webhook", () => {
     const signed = await signedRequest(JSON.stringify(sessionEvent("checkout.session.completed", order)));
     const tampered = JSON.stringify(sessionEvent("checkout.session.completed", order, { amount_total: 1 }));
 
-    const response = await receiveWebhook(
+    const tamperedReply = await receiveWebhook(
       new Request(signed.url, { method: "POST", headers: signed.headers, body: tampered }),
     );
 
-    expect(response.status).toBe(400);
+    expect(tamperedReply.status).toBe(400);
     expect(orderStatus(order.orderId)).toBe("pending_payment");
   });
 
   it("refuses a request without a signature header", async () => {
-    const response = await receiveWebhook(new Request("http://shop.test/api/stripe/webhook", { method: "POST", body: "{}" }));
+    const unsignedReply = await receiveWebhook(new Request("http://shop.test/api/stripe/webhook", { method: "POST", body: "{}" }));
 
-    expect(response.status).toBe(400);
+    expect(unsignedReply.status).toBe(400);
   });
 
   it("flags for review, and leaves stock alone, when a superseded order gets paid", async () => {

@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createCookieJar } from "@/test/cookie-jar";
+import { createCookieJar, type CookieJar } from "@/test/cookie-jar";
 import { GET as completeCheckout } from "./route";
 
-let jar: ReturnType<typeof createCookieJar>;
-vi.mock("next/headers", () => ({ cookies: async () => jar }));
+let jar: CookieJar;
+vi.mock("next/headers", () => ({ cookies: () => Promise.resolve(jar) }));
 
 const ORDER_ID = "4f0c2a8e-5d1b-4c3e-9a77-1b2c3d4e5f60";
 
@@ -22,10 +22,10 @@ describe("GET /checkout/complete", () => {
   it("clears the cart and hold of the shopper who placed the order, then shows the order", async () => {
     jar.set("order", ORDER_ID);
 
-    const response = await arriveFromStripe();
+    const completionReply = await arriveFromStripe();
 
-    expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe(`http://shop.test/orders/${ORDER_ID}`);
+    expect(completionReply.status).toBe(303);
+    expect(completionReply.headers.get("location")).toBe(`http://shop.test/orders/${ORDER_ID}`);
     expect([...jar.values.keys()]).toEqual(["order"]);
   });
 

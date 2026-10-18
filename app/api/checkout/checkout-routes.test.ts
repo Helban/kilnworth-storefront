@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiErrorSchema, cartBodySchema, checkoutBodySchema } from "@/lib/api/contract";
-import { createCookieJar } from "@/test/cookie-jar";
+import { createCookieJar, type CookieJar } from "@/test/cookie-jar";
 import { createTestDatabase, type TestDatabase } from "@/test/sqlite-database";
 import { GET as getCart } from "../cart/route";
 import { GET as getCheckout } from "./route";
 import { POST as holdCart } from "./reservation/route";
 
 let db: TestDatabase;
-let jar: ReturnType<typeof createCookieJar>;
-vi.mock("@/lib/db", () => ({ getDbWithExpiredHoldsReleased: async () => db }));
-vi.mock("next/headers", () => ({ cookies: async () => jar }));
+let jar: CookieJar;
+vi.mock("@/lib/db", () => ({ getDbWithExpiredHoldsReleased: () => Promise.resolve(db) }));
+vi.mock("next/headers", () => ({ cookies: () => Promise.resolve(jar) }));
 
 function shopperWithCart(lines: { slug: string; quantity: number }[]) {
   const shopper = createCookieJar();
@@ -33,10 +33,11 @@ describe("checkout hold routes", () => {
   it("holds the cart, remembers the hold in a cookie and reports it", async () => {
     jar = shopperWithCart([{ slug: "moon-jar", quantity: 1 }]);
 
-    const response = await postHold();
+    const holdReply = await postHold();
 
-    expect(response.status).toBe(200);
-    const { checkout } = checkoutBodySchema.parse(await response.json());
+    expect(holdReply.status).toBe(200);
+    const { checkout } = checkoutBodySchema.parse(await holdReply.json());
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- vitest types asymmetric matchers as any
     expect(checkout.hold).toEqual({ status: "held", expiresAt: expect.any(Number), secondsLeft: 600 });
     expect(jar.values.get("checkout")).toMatch(/^[0-9a-f-]{36}$/);
     expect(reservedOf("moon-jar")).toBe(1);
@@ -58,10 +59,10 @@ describe("checkout hold routes", () => {
     await postHold();
 
     jar = shopperWithCart([{ slug: "moon-jar", quantity: 1 }]);
-    const response = await postHold();
+    const rejection = await postHold();
 
-    expect(response.status).toBe(409);
-    expect(apiErrorSchema.parse(await response.json()).error).toEqual({
+    expect(rejection.status).toBe(409);
+    expect(apiErrorSchema.parse(await rejection.json()).error).toEqual({
       code: "insufficient_stock",
       message: "Not enough left of: Moon jar. Change the quantity in your cart and try again.",
     });
@@ -92,10 +93,10 @@ describe("checkout hold routes", () => {
   it("refuses to hold an empty cart", async () => {
     jar = createCookieJar();
 
-    const response = await postHold();
+    const emptyCartReply = await postHold();
 
-    expect(response.status).toBe(409);
-    expect(apiErrorSchema.parse(await response.json()).error.code).toBe("cart_empty");
+    expect(emptyCartReply.status).toBe(409);
+    expect(apiErrorSchema.parse(await emptyCartReply.json()).error.code).toBe("cart_empty");
   });
 
   it("refuses a hold requested from another origin", async () => {

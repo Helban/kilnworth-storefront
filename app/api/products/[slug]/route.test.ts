@@ -5,7 +5,7 @@ import { createTestDatabase } from "@/test/sqlite-database";
 import { GET } from "./route";
 
 let db: SqlDatabase;
-vi.mock("@/lib/db", () => ({ getDbWithExpiredHoldsReleased: async () => db }));
+vi.mock("@/lib/db", () => ({ getDbWithExpiredHoldsReleased: () => Promise.resolve(db) }));
 
 function getProduct(slug: string) {
   return GET(new Request(`http://test/api/products/${slug}`), { params: Promise.resolve({ slug }) });
@@ -17,10 +17,10 @@ describe("GET /api/products/[slug]", () => {
   });
 
   it("returns a body that satisfies the published contract", async () => {
-    const response = await getProduct("moon-jar");
+    const productReply = await getProduct("moon-jar");
 
-    expect(response.status).toBe(200);
-    expect(productDetailSchema.parse(await response.json()).product).toMatchObject({
+    expect(productReply.status).toBe(200);
+    expect(productDetailSchema.parse(await productReply.json()).product).toMatchObject({
       name: "Moon jar",
       stockLeft: 1,
       image: { src: "/products/moon-jar.webp" },
@@ -28,10 +28,11 @@ describe("GET /api/products/[slug]", () => {
   });
 
   it("answers 404 with an error code for an unknown slug", async () => {
-    const response = await getProduct("teapot");
+    const missingReply = await getProduct("teapot");
 
-    expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({
+    expect(missingReply.status).toBe(404);
+    expect(await missingReply.json()).toEqual({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- vitest types asymmetric matchers as any
       error: { code: "product_not_found", message: expect.any(String) },
     });
   });

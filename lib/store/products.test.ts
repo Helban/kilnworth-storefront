@@ -10,6 +10,7 @@ describe("product queries", () => {
     expect(products[0]).toEqual({
       slug: "ash-glaze-mug",
       name: "Ash glaze mug",
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- vitest types asymmetric matchers as any
       description: expect.any(String),
       category: "mug",
       priceCents: 3800,

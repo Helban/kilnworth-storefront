@@ -12,7 +12,7 @@ const validProduct = {
 };
 
 function respondWith(body: string, status = 200): ApiTransport {
-  return async () => new Response(body, { status, headers: { "content-type": "application/json" } });
+  return () => Promise.resolve(new Response(body, { status, headers: { "content-type": "application/json" } }));
 }
 
 describe("API client", () => {
@@ -60,9 +60,7 @@ describe("API client", () => {
   });
 
   it("reports a network failure when the request never gets a response", async () => {
-    const api = createApiClient(async () => {
-      throw new TypeError("fetch failed");
-    });
+    const api = createApiClient(() => Promise.reject(new TypeError("fetch failed")));
 
     expect(await api.listProducts()).toEqual({ ok: false, failure: { kind: "network" } });
   });

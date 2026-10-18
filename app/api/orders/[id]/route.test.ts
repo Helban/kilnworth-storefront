@@ -4,14 +4,14 @@ import { priceCart } from "@/lib/cart/pricing";
 import { createOrder } from "@/lib/store/orders";
 import { findProductsBySlugs } from "@/lib/store/products";
 import { reserveStock } from "@/lib/store/reservations";
-import { createCookieJar } from "@/test/cookie-jar";
+import { createCookieJar, type CookieJar } from "@/test/cookie-jar";
 import { createTestDatabase, type TestDatabase } from "@/test/sqlite-database";
 import { GET as getOrder } from "./route";
 
 let db: TestDatabase;
-let jar: ReturnType<typeof createCookieJar>;
-vi.mock("@/lib/db", () => ({ getDb: async () => db }));
-vi.mock("next/headers", () => ({ cookies: async () => jar }));
+let jar: CookieJar;
+vi.mock("@/lib/db", () => ({ getDb: () => Promise.resolve(db) }));
+vi.mock("next/headers", () => ({ cookies: () => Promise.resolve(jar) }));
 
 async function placeOrder(): Promise<string> {
   const lines = [{ slug: "slate-bud-vase", quantity: 2 }];
@@ -40,10 +40,10 @@ describe("GET /api/orders/[id]", () => {
     const orderId = await placeOrder();
     jar.set("order", orderId);
 
-    const response = await read(orderId);
+    const orderReply = await read(orderId);
 
-    expect(response.status).toBe(200);
-    expect(orderBodySchema.parse(await response.json()).order).toMatchObject({
+    expect(orderReply.status).toBe(200);
+    expect(orderBodySchema.parse(await orderReply.json()).order).toMatchObject({
       id: orderId,
       status: "pending_payment",
       lines: [{ name: "Slate bud vase", quantity: 2, unitPriceCents: 4400, lineTotalCents: 8800 }],

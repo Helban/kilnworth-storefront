@@ -35,6 +35,7 @@ describe("reserveStock", () => {
       NOW,
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- vitest types asymmetric matchers as any
     expect(outcome).toEqual({ ok: true, reservationId: expect.any(String), expiresAt: NOW + RESERVATION_TTL_MS });
     expect(stockOf("ash-glaze-mug")).toEqual({ available: 8, reserved: 2 });
     expect(stockOf("moon-jar")).toEqual({ available: 1, reserved: 1 });

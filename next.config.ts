@@ -27,6 +27,8 @@ const nextConfig: NextConfig = {
   // No image resizing service is bound yet (Cloudflare Images would be the one), so each image
   // ships at its own size. See public/products/.
   images: { unoptimized: true },
+  // Next.js requires headers() to return a Promise, whether or not it awaits anything.
+  // eslint-disable-next-line @typescript-eslint/require-await
   async headers() {
     return [
       {

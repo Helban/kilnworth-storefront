@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     payments = await getStripe();
   } catch (error) {
     if (!(error instanceof PaymentsNotConfiguredError)) throw error;
+    // eslint-disable-next-line no-console -- tells the operator why payments are off; there is no logger module
     console.error(error.message);
     return apiError(503, "payments_unavailable", "Payments are not set up on this server yet.");
   }
@@ -34,12 +35,14 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (!(error instanceof Stripe.errors.StripeSignatureVerificationError)) throw error;
+    // eslint-disable-next-line no-console -- deliberate warning, documented in NOTES.md
     console.warn("Refused a Stripe webhook with an invalid signature");
     return apiError(400, "invalid_signature", "The webhook signature does not match.");
   }
 
   const outcome = await handleStripeEvent(await getDb(), event, Date.now());
   if (outcome === "needs_review" || outcome === "unknown_order") {
+    // eslint-disable-next-line no-console -- deliberate warning, documented in NOTES.md
     console.warn("Stripe event needs a person to look at it", event.id, event.type, outcome);
   }
   return Response.json({ received: true, outcome });

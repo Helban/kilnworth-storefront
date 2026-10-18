@@ -27,8 +27,8 @@ export function CheckoutForm() {
   function showFieldErrors(fieldErrors: FieldErrors) {
     flushSync(() => setErrors(fieldErrors));
     const firstInvalid = FIELD_ORDER.find((field) => fieldErrors[field]);
-    const element = firstInvalid && formRef.current?.elements.namedItem(firstInvalid);
-    if (element instanceof HTMLElement) element.focus();
+    const invalidControl = firstInvalid && formRef.current?.elements.namedItem(firstInvalid);
+    if (invalidControl instanceof HTMLElement) invalidControl.focus();
   }
 
   function showFormError(message: string) {
@@ -66,7 +66,7 @@ export function CheckoutForm() {
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-10">
+    <form ref={formRef} onSubmit={(event) => void handleSubmit(event)} noValidate className="space-y-10">
       {formError && (
         <p ref={formErrorRef} role="alert" tabIndex={-1} className="rounded-xs border border-error bg-surface p-4 text-error">
           {formError}

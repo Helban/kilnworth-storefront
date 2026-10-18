@@ -4,6 +4,7 @@ import { useEffect } from "react";
 
 export default function PageError({ error, retry }: { error: unknown; retry: () => void }) {
   useEffect(() => {
+    // eslint-disable-next-line no-console -- the browser console is the only place a client render error is reported
     console.error(error);
   }, [error]);
 

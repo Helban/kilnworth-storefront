@@ -27,7 +27,7 @@ export function HoldCartButton({ label }: { label: string }) {
 
   return (
     <div>
-      <button type="button" onClick={hold} disabled={holding} className="button-primary w-full">
+      <button type="button" onClick={() => void hold()} disabled={holding} className="button-primary w-full">
         {holding ? "Holding your pieces…" : label}
       </button>
       {failure && (

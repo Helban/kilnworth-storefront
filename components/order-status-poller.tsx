@@ -35,10 +35,10 @@ export function OrderStatusPoller({ orderId }: { orderId: string }) {
         setGaveUp(true);
         return;
       }
-      timer = setTimeout(poll, POLL_INTERVAL_MS);
+      timer = setTimeout(() => void poll(), POLL_INTERVAL_MS);
     }
 
-    timer = setTimeout(poll, POLL_INTERVAL_MS);
+    timer = setTimeout(() => void poll(), POLL_INTERVAL_MS);
     return () => {
       controller.abort();
       clearTimeout(timer);

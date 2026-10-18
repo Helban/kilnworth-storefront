@@ -40,6 +40,7 @@ export async function POST(request: Request) {
     payments = await getStripe();
   } catch (error) {
     if (!(error instanceof PaymentsNotConfiguredError)) throw error;
+    // eslint-disable-next-line no-console -- tells the operator why payments are off; there is no logger module
     console.error(error.message);
     return apiError(503, "payments_unavailable", "Payments are not set up on this server yet.");
   }
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (!(error instanceof Stripe.errors.StripeError)) throw error;
+    // eslint-disable-next-line no-console -- provider failures must reach the server log; there is no logger module
     console.error("Stripe Checkout Session failed", orderId, error.type, error.message);
     return apiError(
       502,

@@ -55,7 +55,7 @@ export function CartEditor({ initialCart }: { initialCart: Cart }) {
               key={line.slug}
               line={line}
               busy={busySlug === line.slug}
-              onQuantityChange={(quantity) => changeQuantity(line.slug, quantity)}
+              onQuantityChange={(quantity) => void changeQuantity(line.slug, quantity)}
             />
           ))}
         </ul>

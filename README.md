@@ -79,7 +79,10 @@ test/, e2e/     Vitest helpers and Playwright specs
 The catalog, product, cart, checkout and order pages are server components. They render on the
 server from live stock on every request, with nothing cached, because stock changes with every
 sale. Client components appear only where the shopper does something: the add-to-cart form, the
-cart editor, the checkout button and form, and the poller on the confirmation page.
+photo switcher on the product page, the cart editor, the checkout button and form, and the poller
+on the confirmation page. Two small ones exist for the browser's sake: the photo that fades in
+once it has loaded, and a helper that scrolls to a category heading when a link from another page
+opens the home page.
 
 Both sides read data the same way. Route handlers under `app/api/` serve products, the cart,
 checkout and orders as JSON. The UI talks to them only through `lib/api/client.ts`, which checks

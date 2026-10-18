@@ -1,7 +1,7 @@
 # Handover notes
 
 Written for whoever picks this up next. It records what was built, what was checked and how, and
-what was not checked. The build was done on 2026-10-17 and the design pass on 2026-10-18, in a
+what was not checked. The build was done on 2026-10-17 and both design passes on 2026-10-18, in a
 Linux container with Node 22.22.0 and npm 10.9.4.
 
 ## Status
@@ -18,6 +18,7 @@ Every item in the brief's scope is built. Nothing has been deployed.
 | Stripe webhook with signature check and idempotency, confirmation page | Done |
 | README, Playwright tests | Done |
 | Design pass from `DESIGN.md`, with real product photos | Done, see "Design pass" below |
+| Second design pass ("give the shop a place and a story") | Done, see "Second design pass" below |
 
 Definition of done, as last run on the final branch:
 
@@ -26,7 +27,7 @@ Definition of done, as last run on the final branch:
 | `npm run lint` | Clean |
 | `npm run typecheck` | Clean |
 | `npm test` | 86 tests in 15 files pass |
-| `npm run test:e2e` | 6 tests pass (Chromium, against the OpenNext build in workerd) |
+| `npm run test:e2e` | 8 tests pass (Chromium, against the OpenNext build in workerd) |
 | `npm audit` | 5 high findings in one dev-only chain, explained below; `npm audit --omit=dev` finds 0 |
 
 ## Platform check
@@ -310,10 +311,11 @@ running on port 12111 or starts it with Docker for the run. stripe-mock checks e
 against Stripe's OpenAPI spec and answers with fixture objects, so it proves requests are well
 formed, not that amounts or behaviour are right.
 
-`npm run test:e2e` runs Playwright (6 tests) against the OpenNext build in workerd, with its own
+`npm run test:e2e` runs Playwright (8 tests) against the OpenNext build in workerd, with its own
 fresh database in `.next/cache/e2e-state` and test-mode Stripe values passed with `--var`
 (`e2e/serve.mjs`). It covers the whole purchase with a signed webhook, two shoppers racing for one
-piece, the form's focus and error wiring, the contract error in the cart, and an axe scan for WCAG
+piece, the form's focus and error wiring, the contract error in the cart, the product photo
+switcher, a category link from another page, and an axe scan for WCAG
 2.1 A and AA rules on the catalog, product, cart and checkout pages (no violations found; axe was
 confirmed to report a deliberately unlabeled input). The webhook in the e2e test is built and
 signed by the test, playing Stripe; it reads the session id from the local D1 file.
@@ -434,6 +436,98 @@ Deleting `.next/dev` fixed it; leave `.next/cache` alone, because the local data
   the first round sells the moon jar, and the e2e database is only reset when the server starts.
   The suite is meant to run once per server start.
 
+## Second design pass
+
+The second half of `DESIGN.md` asked for the shop to feel like a working studio before it shows a
+price. The copy in it is used as written. The screenshots in `docs/screenshots/` were replaced.
+They come from `npm run preview` with a freshly seeded local database, each page scrolled once
+first, at 1440x900 and 390x844. The phone shots used to be 390x900; the hero is sized in `vh`, so
+they now use a phone's height.
+
+What changed:
+
+- Home opens with `components/studio-hero.tsx`: the studio photo across the full viewport width,
+  56vh tall on a phone and 72vh from 1024 px up, with the heading, text and "See the pieces" over
+  a scrim. On desktop the text sits over the left half. On a phone it sits at the bottom of the
+  photo instead, because the left half of a 390 px screen is too narrow for it. Under it are the three facts, then the catalog under `id="pieces"`, with "How a batch
+  is made" (`components/how-a-batch-is-made.tsx`) between Vases and One of a kind. The steps are
+  an `<ol>`, since they happen in order; no numbers are shown. The process photos' alt texts
+  describe what is in each photo.
+- `<main>` keeps its `page-width`. The hero and the band break out of it with a `full-bleed`
+  utility (`margin-inline: calc(50% - 50vw)`), because moving the width onto each page instead
+  would have touched a dozen files. The hero also cancels the top padding of `<main>` with a
+  negative margin, so if that padding changes, `HERO_FRAME` has to change with it.
+- The header links to the four category headings on the home page. On a phone they form a
+  second row, which wraps to a third at 360 px. The header is now sticky only from 1024 px up,
+  where it stays one row tall; two or three rows stuck to the top of a phone would cover too much.
+- The footer has three parts on desktop and stacks on a phone. The whole phrase "Built by
+  helban.dev" is the link.
+- The product page shows the glaze close-up. `glazePhoto()` in `lib/product-photos.ts` derives
+  `<slug>-detail.webp` from the API's image path the same way `tilePhotoSrc()` derives the 400
+  file, so the API is unchanged. The two thumbnails are 80 px buttons with `aria-pressed`. The
+  pressed one gets a 2 px ink line under it rather than a frame, because the brief bans borders
+  around photos. Under the description are a `<details>` for shipping and returns, and "More from
+  this batch" with the catalog's tile grid.
+- "More from this batch" shows up to four other pieces in stock from the same category. When
+  fewer than two are left there, it adds pieces from the other categories after them. On the
+  preview database the tenmoku bowl showed the other three bowls, the slate bud vase showed the
+  shino vase and three mugs, and the moon jar showed the other two one-offs. The list comes from
+  a second API call on the product page, and a failed call shows the usual error box in its place.
+- The photo fade moved from `ProductPhoto` into `components/photo.tsx`, so the studio photos fade
+  in the same way. `ProductPhoto` still picks the 400 and 800 files but is no longer a client
+  component itself. The catalog's tile layouts moved to `components/catalog-tiles.tsx`, and the
+  category names and heading ids to `lib/categories.ts`, because the product page, header and
+  footer need them too.
+- `public/batch-*.webp` is deleted. The home loading placeholder now has the hero's shape.
+
+Hero text contrast, as measured: for each line of the heading and the paragraph, a script hid the
+text, took a screenshot in Chromium at device pixel ratio 1, and found the lightest single pixel
+inside the line's box. White against that pixel came out at 6.19:1 at both 1440x900 and 390x844,
+and at no less than 6.19:1 at eleven other sizes from 320x568 to 1920x1080. 6.19:1 is the ratio of
+white to 70% ink over pure white, so it is the floor for text anywhere on the solid part of the
+scrim. The first version used percentage stops for the gradient and fell to 4.51:1 at 1024x768
+and 3.43:1 at 320x568, where the heading wraps above the stop. So on a phone the scrim is now the
+background of the text block itself, solid behind the text however it wraps and fading out over
+6rem above it, and on desktop it stays solid to `max(45%, 36rem)` from the left edge. The button
+is ink on white (16.99:1) whatever the photo does. Its focus ring is white, because the usual ink
+ring nearly disappears on the scrim.
+
+Other checks run after the change:
+
+- `npm run lint`, `npm run typecheck`, `npm test` (86, none changed) and `npm run test:e2e` (8)
+  pass. The two new e2e tests and the axe scan also passed four repeats in a row. The axe scan
+  now covers the new home page and a product page with the switcher, details and tiles.
+- At 390 px, home, product, cart and checkout have no horizontal scroll.
+- Motion, in Chromium: the hero photo loads eagerly with high priority and never fades. A process
+  photo below the fold starts at opacity 0 and fades in over 200 ms; with
+  `prefers-reduced-motion: reduce` it is visible from the start.
+- New text pairs: `bg` on `ink` in the band is 15.45:1, and `ink` on white in the hero button is
+  16.99:1.
+
+New tests cover the new interactive parts only, as the brief asks: the photo switcher (by mouse
+and keyboard) and a category link from another page. The selection rule for "More from this batch"
+has no unit test; it was checked on the pages listed above.
+
+The category-link test came from a bug found while checking the anchors. A link from another
+page, for example Bowls on `/cart`, landed at the top of the home page instead of at Bowls.
+Next.js looks for the `#hash` target when the new page first renders, which on home is the
+loading placeholder, finds nothing and stays at the top. `components/scroll-to-hash-target.tsx`
+scrolls to the target once the catalog has rendered. Links within the home page worked from the
+start.
+
+"Without JavaScript the main photo shows": the gallery renders the whole piece on the server, and
+the switch to the close-up happens only in the browser. On the preview build, with JavaScript
+disabled in Chromium, the product page rendered in full on 6 of 6 loads, with the whole piece
+showing and its thumbnail pressed. Its HTML arrives with no hidden streamed segment, with
+Chromium's own user agent and with curl. Home still has one, so home still stops at its loading
+placeholder without JavaScript, as the first pass found. I did not find out why the two pages
+differ, so do not count on it: a change in how fast the product page's data arrives may bring its
+placeholder back without JavaScript.
+
+One more local development pitfall: twice, `next dev` kept serving the previous `globals.css`
+after an edit to it, with "Compiled" in the log and no error. Restarting the dev server with
+`.next/dev` deleted fixed it both times.
+
 ## Not verified
 
 - A deploy to Cloudflare, and anything on the real edge. All runtime checks used local workerd
@@ -442,8 +536,13 @@ Deleting `.next/dev` fixed it; leave `.next/cache` alone, because the local data
   and webhooks delivered by Stripe (for example through `stripe listen`). No key exists here.
 - Browsers other than Chromium 141, and screen readers. The accessibility checks are axe, the
   keyboard tests and reading the markup, not a screen reader session.
-- The design on real devices and at sizes other than 1440 and 390 px. Fonts were checked only in
+- The design on real devices. Screenshots exist at 1440 and 390 px only; the hero text contrast
+  was also measured at eleven other viewport sizes, all in Chromium. Fonts were checked only in
   Chromium on Linux.
+- The full-bleed bands on a system whose scrollbar takes up space (Windows, or Linux with classic
+  scrollbars). Headless Chromium here reserves 0 px for it. In theory a band then sits up to half
+  a scrollbar width off centre against the page, and `body` clips the extra width instead of
+  scrolling sideways.
 - `next dev` on a machine without an HTTPS proxy (see Environment notes).
 
 ## Open questions
@@ -458,9 +557,10 @@ Deleting `.next/dev` fixed it; leave `.next/cache` alone, because the local data
   session expired finds the hold released and sends the order to `needs_review`, even if the stock
   is still there.
 - Should old Stripe sessions be expired when a shopper resubmits checkout?
-- Pages show only their loading placeholder when JavaScript is off (see "Design pass"). Dropping
-  `loading.tsx` from the catalog and product routes would fix that and bring back real 404s for
-  unknown products, at the cost of a blank wait on slow navigations. Which matters more here?
+- With JavaScript off, home and the other pages still show only their loading placeholder (see
+  "Design pass"); product pages are now the exception (see "Second design pass"). Dropping
+  `loading.tsx` from the catalog route would fix home and bring back real 404s for unknown
+  products, at the cost of a blank wait on slow navigations. Which matters more here?
 
 ## Environment notes
 

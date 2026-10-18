@@ -418,6 +418,22 @@ One more local development pitfall: after switching to this branch, `next dev` k
 previous branch's compiled `globals.css` from Turbopack's cache in `.next/dev`, with no error.
 Deleting `.next/dev` fixed it; leave `.next/cache` alone, because the local database lives there.
 
+### Review fixes after the pass
+
+- The cart count no longer fades. On a second machine the axe scan in
+  `e2e/accessibility.spec.ts` caught the count at partial opacity right after "Add to cart" and
+  reported a contrast violation; on the first machine the same test passed, so it depended on
+  timing. With the fade gone the test passed three runs out of three.
+- The home intro no longer shows the moon jar, which also opens "One of a kind" further down. It
+  now shows a group shot of six pieces from the batch (`public/batch-1144.webp` and
+  `batch-572.webp`), full content width under the heading.
+- `docs/screenshots/home-*.png` were retaken from `npm run preview` after scrolling the page once,
+  because lazy photos below the fold stay at opacity 0 in a full-page shot taken straight after
+  load.
+- `npm run test:e2e -- --repeat-each=3` fails the two purchase tests from the second round on:
+  the first round sells the moon jar, and the e2e database is only reset when the server starts.
+  The suite is meant to run once per server start.
+
 ## Not verified
 
 - A deploy to Cloudflare, and anything on the real edge. All runtime checks used local workerd

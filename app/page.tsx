@@ -8,7 +8,8 @@ import { getServerApi } from "@/lib/api/server";
 import { formatPrice } from "@/lib/money";
 import type { ProductCategory } from "@/lib/store/products";
 
-const FEATURED_SLUG = "moon-jar";
+// A group shot rather than one product, so no piece appears twice on the page.
+const BATCH_PHOTO = { src: "/batch-1144.webp", smallSrc: "/batch-572.webp", width: 1144, height: 460 };
 
 const CATEGORY_HEADINGS: Record<ProductCategory, string> = {
   mug: "Mugs and cups",
@@ -21,31 +22,31 @@ export default async function CatalogPage() {
   const api = await getServerApi();
   const catalog = await api.listProducts();
   const products = catalog.ok ? catalog.data.products : [];
-  const featured = products.find((product) => product.slug === FEATURED_SLUG);
 
   return (
     <>
-      <section aria-labelledby="intro-heading" className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16">
-        <div>
+      <section aria-labelledby="intro-heading">
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-end lg:gap-16">
           <h1 id="intro-heading" className="text-5xl sm:text-6xl">
             Current batch
           </h1>
-          <p className="mt-6 max-w-[34rem] text-lg leading-relaxed text-ink-muted">
+          <p className="max-w-[34rem] text-lg leading-relaxed text-ink-muted">
             Kilnworth Studio throws and glazes mugs, bowls and vases in small runs, a few of each at a time. Once a
             piece sells, it does not come back.
           </p>
         </div>
-        {featured && (
-          <Link href={`/products/${featured.slug}`} className="block">
-            <ProductPhoto
-              image={featured.image}
-              alt={`${featured.name}, ${formatPrice(featured.priceCents)}`}
-              layout="large"
-              loading="eager"
-              sizes="(min-width: 75rem) 34rem, (min-width: 64rem) 45vw, 100vw"
-            />
-          </Link>
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element -- images are unoptimized, see ProductPhoto */}
+        <img
+          src={BATCH_PHOTO.src}
+          srcSet={`${BATCH_PHOTO.smallSrc} 572w, ${BATCH_PHOTO.src} 1144w`}
+          sizes="(min-width: 75rem) 69rem, 100vw"
+          width={BATCH_PHOTO.width}
+          height={BATCH_PHOTO.height}
+          alt="Mugs, a bud vase, a bottle vase and bowls from the current batch on a plaster table"
+          fetchPriority="high"
+          decoding="async"
+          className="mt-10 h-auto w-full bg-line"
+        />
       </section>
 
       <div className="mt-16 sm:mt-24">

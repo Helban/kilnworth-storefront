@@ -27,16 +27,11 @@ export function HoldCartButton({ label }: { label: string }) {
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={hold}
-        disabled={holding}
-        className="rounded-md bg-orange-800 px-5 py-3 font-medium text-white hover:bg-orange-900 disabled:opacity-60"
-      >
+      <button type="button" onClick={hold} disabled={holding} className="button-primary w-full">
         {holding ? "Holding your pieces…" : label}
       </button>
       {failure && (
-        <p role="alert" className="mt-3 text-red-800">
+        <p role="alert" className="mt-4 text-error">
           {failure}
         </p>
       )}

@@ -46,7 +46,7 @@ export function OrderStatusPoller({ orderId }: { orderId: string }) {
   }, [orderId, router]);
 
   return (
-    <p role="status" className="mt-2 text-stone-600">
+    <p role="status" className="mt-4 max-w-[65ch] text-ink-muted">
       {gaveUp
         ? "Still waiting. Confirmation can occasionally take a few minutes; reload this page later."
         : "This page updates by itself once Stripe confirms the payment, usually within a few seconds."}

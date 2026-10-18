@@ -11,30 +11,36 @@ interface Summary {
 export function OrderSummary({ summary }: { summary: Summary }) {
   return (
     <div>
-      <ul className="divide-y divide-stone-200 border-y border-stone-200">
+      <ul className="divide-y divide-line border-y border-line">
         {summary.lines.map((line) => (
-          <li key={line.name} className="flex justify-between gap-4 py-3">
+          <li key={line.name} className="flex justify-between gap-4 py-4">
             <span>
               {line.quantity} × {line.name}
             </span>
-            <span>{formatPrice(line.lineTotalCents)}</span>
+            <span className="tabular-nums">{formatPrice(line.lineTotalCents)}</span>
           </li>
         ))}
       </ul>
-      <dl className="mt-4 space-y-2">
-        <div className="flex justify-between">
-          <dt>Subtotal</dt>
-          <dd>{formatPrice(summary.subtotalCents)}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt>Shipping (US, flat rate)</dt>
-          <dd>{formatPrice(summary.shippingCents)}</dd>
-        </div>
-        <div className="flex justify-between border-t border-stone-200 pt-2 font-semibold">
-          <dt>Total</dt>
-          <dd>{formatPrice(summary.totalCents)}</dd>
-        </div>
-      </dl>
+      <Totals summary={summary} />
     </div>
+  );
+}
+
+export function Totals({ summary }: { summary: Omit<Summary, "lines"> }) {
+  return (
+    <dl className="mt-4 space-y-2 tabular-nums">
+      <div className="flex justify-between gap-4">
+        <dt>Subtotal</dt>
+        <dd>{formatPrice(summary.subtotalCents)}</dd>
+      </div>
+      <div className="flex justify-between gap-4">
+        <dt>Shipping (US, flat rate)</dt>
+        <dd>{formatPrice(summary.shippingCents)}</dd>
+      </div>
+      <div className="flex justify-between gap-4 border-t border-line pt-2 font-semibold">
+        <dt>Total</dt>
+        <dd>{formatPrice(summary.totalCents)}</dd>
+      </div>
+    </dl>
   );
 }

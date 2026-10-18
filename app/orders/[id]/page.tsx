@@ -21,17 +21,21 @@ export default async function OrderPage({ params }: PageProps<"/orders/[id]">) {
 
   const { order } = lookup.data;
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       <StatusMessage order={order} />
-      <section aria-labelledby="summary-heading" className="mt-10">
-        <h2 id="summary-heading" className="font-serif text-xl font-semibold">
+      <section aria-labelledby="summary-heading" className="mt-12">
+        <h2 id="summary-heading" className="text-2xl">
           Order summary
         </h2>
         <div className="mt-4">
           <OrderSummary summary={order} />
         </div>
-        <h3 className="mt-6 font-semibold">Shipping to</h3>
-        <address className="mt-1 not-italic text-stone-700">
+      </section>
+      <section aria-labelledby="address-heading" className="mt-10">
+        <h2 id="address-heading" className="text-2xl">
+          Shipping to
+        </h2>
+        <address className="mt-4 not-italic leading-relaxed">
           {order.shippingAddress.name}
           <br />
           {order.shippingAddress.line1}
@@ -49,20 +53,22 @@ export default async function OrderPage({ params }: PageProps<"/orders/[id]">) {
   );
 }
 
+// The status comes first and big; the details follow.
 function StatusMessage({ order }: { order: Order }) {
   switch (order.status) {
     case "pending_payment":
       return (
         <>
-          <h1 className="font-serif text-3xl font-semibold">Waiting for payment confirmation</h1>
+          <h1 className="text-4xl sm:text-5xl">Waiting for payment confirmation</h1>
           <OrderStatusPoller orderId={order.id} />
         </>
       );
     case "paid":
       return (
         <>
-          <h1 className="font-serif text-3xl font-semibold">Thank you, your order is confirmed</h1>
-          <p className="mt-2 text-stone-600">
+          <h1 className="text-4xl sm:text-5xl">Thank you, your order is confirmed</h1>
+          <p className="mt-4 text-2xl text-glaze">Paid</p>
+          <p className="mt-4 max-w-[65ch] text-ink-muted">
             Stripe confirmed the payment (in test mode). A real shop would email {order.email} now; this demo sends
             nothing and ships nothing.
           </p>
@@ -71,8 +77,9 @@ function StatusMessage({ order }: { order: Order }) {
     case "needs_review":
       return (
         <>
-          <h1 className="font-serif text-3xl font-semibold">We need to check this order by hand</h1>
-          <p className="mt-2 text-stone-600">
+          <h1 className="text-4xl sm:text-5xl">We need to check this order by hand</h1>
+          <p className="mt-4 text-2xl text-clay">Paid, needs review</p>
+          <p className="mt-4 max-w-[65ch] text-ink-muted">
             The payment arrived, but the pieces were no longer held for this checkout, or the amount did not match.
             Someone at the studio would check the stock and either confirm the order or refund it in full.
           </p>
@@ -82,14 +89,14 @@ function StatusMessage({ order }: { order: Order }) {
     case "superseded":
       return (
         <>
-          <h1 className="font-serif text-3xl font-semibold">This checkout was not completed</h1>
-          <p className="mt-2 text-stone-600">
+          <h1 className="text-4xl sm:text-5xl">This checkout was not completed</h1>
+          <p className="mt-4 max-w-[65ch] text-ink-muted">
             {order.status === "expired"
               ? "The payment page expired before payment, and the pieces went back on sale."
               : "You started checkout again after this one, so this attempt was replaced."}{" "}
             No payment was taken for it.
           </p>
-          <Link href="/" className="mt-3 inline-block font-medium underline underline-offset-2">
+          <Link href="/" className="text-link mt-6 inline-block">
             Back to the shop
           </Link>
         </>

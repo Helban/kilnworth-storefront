@@ -11,11 +11,11 @@ export default async function CartPage() {
 
   return (
     <>
-      <h1 className="font-serif text-3xl font-semibold">Your cart</h1>
+      <h1 className="text-4xl sm:text-5xl">Your cart</h1>
       {loaded.ok ? (
         <CartEditor initialCart={loaded.data.cart} />
       ) : (
-        <div className="mt-6">
+        <div className="mt-8">
           <FetchFailure failure={loaded.failure} subject="your cart" retryHref="/cart" />
         </div>
       )}

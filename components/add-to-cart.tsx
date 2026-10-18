@@ -27,18 +27,13 @@ export function AddToCart({ slug, stockLeft }: { slug: string; stockLeft: number
 
   const choices = Array.from({ length: Math.min(stockLeft, MAX_LINE_QUANTITY) }, (_, index) => index + 1);
   return (
-    <form action={addToCart} className="mt-6">
-      <div className="flex items-end gap-3">
-        <div>
-          <label htmlFor={quantityId} className="block text-sm font-medium">
+    <form action={addToCart} className="mt-8">
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="w-24">
+          <label htmlFor={quantityId} className="block font-semibold">
             Quantity
           </label>
-          <select
-            id={quantityId}
-            name="quantity"
-            defaultValue="1"
-            className="mt-1 rounded-md border border-stone-400 bg-white px-3 py-2"
-          >
+          <select id={quantityId} name="quantity" defaultValue="1" className="field mt-2">
             {choices.map((choice) => (
               <option key={choice} value={choice}>
                 {choice}
@@ -46,26 +41,22 @@ export function AddToCart({ slug, stockLeft }: { slug: string; stockLeft: number
             ))}
           </select>
         </div>
-        <button
-          type="submit"
-          disabled={adding}
-          className="rounded-md bg-orange-800 px-5 py-2 font-medium text-white hover:bg-orange-900 disabled:opacity-60"
-        >
+        <button type="submit" disabled={adding} className="button-primary">
           {adding ? "Adding…" : "Add to cart"}
         </button>
       </div>
-      <p role="status" className="mt-3 min-h-6">
+      <p role="status" className="mt-4 min-h-6">
         {state.kind === "added" && (
           <>
-            Added to your cart.{" "}
-            <Link href="/cart" className="font-medium underline underline-offset-2">
+            <span className="text-glaze">Added to your cart.</span>{" "}
+            <Link href="/cart" className="text-link">
               View cart
             </Link>
           </>
         )}
       </p>
       {state.kind === "failed" && (
-        <p role="alert" className="text-red-800">
+        <p role="alert" className="text-error">
           {state.message}
         </p>
       )}

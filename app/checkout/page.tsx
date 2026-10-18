@@ -17,8 +17,8 @@ export default async function CheckoutPage() {
   if (!loaded.ok) {
     return (
       <>
-        <h1 className="font-serif text-3xl font-semibold">Checkout</h1>
-        <div className="mt-6">
+        <h1 className="text-4xl sm:text-5xl">Checkout</h1>
+        <div className="mt-8">
           <FetchFailure failure={loaded.failure} subject="your checkout" retryHref="/checkout" />
         </div>
       </>
@@ -29,9 +29,9 @@ export default async function CheckoutPage() {
   if (cart.lines.length === 0) {
     return (
       <>
-        <h1 className="font-serif text-3xl font-semibold">Checkout</h1>
-        <p className="mt-6 text-stone-600">Your cart is empty, so there is nothing to check out.</p>
-        <Link href="/" className="mt-3 inline-block font-medium underline underline-offset-2">
+        <h1 className="text-4xl sm:text-5xl">Checkout</h1>
+        <p className="mt-8 text-ink-muted">Your cart is empty, so there is nothing to check out.</p>
+        <Link href="/" className="text-link mt-4 inline-block">
           See the current batch
         </Link>
       </>
@@ -40,54 +40,47 @@ export default async function CheckoutPage() {
 
   return (
     <>
-      <h1 className="font-serif text-3xl font-semibold">Checkout</h1>
-      <div className="mt-6">
+      <h1 className="text-4xl sm:text-5xl">Checkout</h1>
+      <div className="mt-6 space-y-2">
+        <HoldStatus hold={hold} />
         <TestModeNotice />
       </div>
-      <div className="mt-8 grid gap-10 md:grid-cols-2">
-        <section aria-labelledby="details-heading" className="space-y-6">
-          <h2 id="details-heading" className="sr-only">
-            Your details
-          </h2>
-          <HoldStatus hold={hold} />
-          {hold.status === "held" && <CheckoutForm />}
-        </section>
-        <section aria-labelledby="summary-heading" className="md:order-last">
-          <h2 id="summary-heading" className="font-serif text-xl font-semibold">
+      {/* The summary comes first in the page so a phone shows what is being bought before the form;
+          on desktop it moves to the right-hand column. */}
+      <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_24rem] lg:gap-16">
+        <section aria-labelledby="summary-heading" className="bg-surface p-6 lg:col-start-2 lg:row-start-1 lg:self-start">
+          <h2 id="summary-heading" className="text-2xl">
             Order summary
           </h2>
           <div className="mt-4">
             <OrderSummary summary={cart} />
           </div>
-          <Link href="/cart" className="mt-4 inline-block text-sm font-medium underline underline-offset-2">
+          <Link href="/cart" className="text-link mt-6 inline-block">
             Change your cart
           </Link>
+        </section>
+        <section aria-labelledby="details-heading" className="lg:col-start-1 lg:row-start-1">
+          <h2 id="details-heading" className="sr-only">
+            Your details
+          </h2>
+          {hold.status === "held" ? <CheckoutForm /> : <HoldCartButton label="Hold my pieces and continue" />}
         </section>
       </div>
     </>
   );
 }
 
+// One calm line either way: the hold is a reassurance, not an alarm.
 function HoldStatus({ hold }: { hold: Hold }) {
   if (hold.status === "none") {
     return (
-      <div className="rounded-md border border-stone-300 p-4">
-        <p>
-          These pieces are not held for you right now. The hold may have run out, or your cart changed
-          since it was taken. Pieces are held for ten minutes while you check out.
-        </p>
-        <div className="mt-4">
-          <HoldCartButton label="Hold my pieces and continue" />
-        </div>
-      </div>
+      <p className="text-ink-muted">Not held right now: the ten-minute hold ran out or the cart changed.</p>
     );
   }
-
   const minutesLeft = Math.max(1, Math.ceil(hold.secondsLeft / 60));
   return (
-    <p className="rounded-md border border-stone-300 p-4">
-      These pieces are held for you for {minutesLeft} more {minutesLeft === 1 ? "minute" : "minutes"}. Nobody else
-      can buy them in that time. If the hold runs out, we check the stock again when you continue to payment.
+    <p className="text-ink-muted">
+      These pieces are held for you for {minutesLeft} more {minutesLeft === 1 ? "minute" : "minutes"}.
     </p>
   );
 }

@@ -9,14 +9,14 @@ export default function PageError({ error, retry }: { error: unknown; retry: () 
 
   return (
     <div role="alert">
-      <h1 className="font-serif text-2xl font-semibold">This page failed to load</h1>
-      <p className="mt-2 text-stone-600">
+      <h1 className="text-4xl">This page failed to load</h1>
+      <p className="mt-4 max-w-[65ch] text-ink-muted">
         Something went wrong on our side. Trying again usually works.
       </p>
       <button
         type="button"
         onClick={retry}
-        className="mt-4 rounded-md bg-stone-900 px-4 py-2 font-medium text-white hover:bg-stone-700"
+        className="button-primary mt-6"
       >
         Try again
       </button>

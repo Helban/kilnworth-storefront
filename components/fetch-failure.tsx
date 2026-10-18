@@ -10,10 +10,10 @@ interface FetchFailureProps {
 
 export function FetchFailure({ failure, subject, retryHref }: FetchFailureProps) {
   return (
-    <div role="alert" className="rounded-md border border-red-800/30 bg-red-50 p-4 text-red-900">
-      <h2 className="font-semibold">Could not load {subject}</h2>
+    <div role="alert" className="max-w-[65ch] rounded-xs border border-error bg-surface p-6">
+      <h2 className="text-2xl text-error">Could not load {subject}</h2>
       <p className="mt-2">{describeFailure(failure)}</p>
-      <Link href={retryHref} className="mt-3 inline-block font-medium underline underline-offset-2">
+      <Link href={retryHref} className="text-link mt-4 inline-block">
         Try again
       </Link>
     </div>

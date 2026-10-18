@@ -66,23 +66,23 @@ export function CheckoutForm() {
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-10">
       {formError && (
-        <p ref={formErrorRef} role="alert" tabIndex={-1} className="rounded-md border border-red-800/30 bg-red-50 p-3 text-red-900">
+        <p ref={formErrorRef} role="alert" tabIndex={-1} className="rounded-xs border border-error bg-surface p-4 text-error">
           {formError}
         </p>
       )}
 
-      <fieldset className="space-y-4">
-        <legend className="font-serif text-xl font-semibold">Contact</legend>
+      <fieldset className="space-y-6">
+        <legend className="mb-6 font-serif text-2xl">Contact</legend>
         <Field name="email" label="Email" error={errors.email} hint="For the order confirmation.">
           {(props) => <input {...props} type="email" autoComplete="email" />}
         </Field>
       </fieldset>
 
-      <fieldset className="space-y-4">
-        <legend className="font-serif text-xl font-semibold">Shipping address</legend>
-        <p className="text-sm text-stone-600">United States only.</p>
+      <fieldset className="space-y-6">
+        <legend className="mb-2 font-serif text-2xl">Shipping address</legend>
+        <p className="text-ink-muted">United States only.</p>
         <Field name="name" label="Full name" error={errors.name}>
           {(props) => <input {...props} autoComplete="shipping name" />}
         </Field>
@@ -95,7 +95,7 @@ export function CheckoutForm() {
         <Field name="city" label="City" error={errors.city}>
           {(props) => <input {...props} autoComplete="shipping address-level2" />}
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2">
           <Field name="state" label="State" error={errors.state}>
             {(props) => (
               <select {...props} autoComplete="shipping address-level1" defaultValue="">
@@ -116,39 +116,38 @@ export function CheckoutForm() {
         </div>
       </fieldset>
 
-      <div>
-        <div className="flex items-start gap-3">
-          <input
-            id="acceptTerms"
-            name="acceptTerms"
-            type="checkbox"
-            value="yes"
-            aria-invalid={errors.acceptTerms ? true : undefined}
-            aria-describedby={errors.acceptTerms ? "acceptTerms-error" : undefined}
-            className="mt-1 size-5 accent-orange-800"
-          />
-          <label htmlFor="acceptTerms">
-            I accept the{" "}
-            <Link href="/terms" target="_blank" className="font-medium underline underline-offset-2">
-              terms of sale<span className="sr-only"> (opens in a new tab)</span>
-            </Link>
-            .
-          </label>
+      {/* The terms checkbox sits directly above the button that starts payment. */}
+      <div className="space-y-6 border-t border-line pt-8">
+        <div>
+          <div className="flex items-start gap-4">
+            <input
+              id="acceptTerms"
+              name="acceptTerms"
+              type="checkbox"
+              value="yes"
+              aria-invalid={errors.acceptTerms ? true : undefined}
+              aria-describedby={errors.acceptTerms ? "acceptTerms-error" : undefined}
+              className="mt-0.5 size-5 shrink-0 accent-ink"
+            />
+            <label htmlFor="acceptTerms">
+              I accept the{" "}
+              <Link href="/terms" target="_blank" className="text-link">
+                terms of sale<span className="sr-only"> (opens in a new tab)</span>
+              </Link>
+              .
+            </label>
+          </div>
+          {errors.acceptTerms && (
+            <p id="acceptTerms-error" className="mt-2 text-error">
+              {errors.acceptTerms}
+            </p>
+          )}
         </div>
-        {errors.acceptTerms && (
-          <p id="acceptTerms-error" className="mt-1 text-sm text-red-800">
-            {errors.acceptTerms}
-          </p>
-        )}
-      </div>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded-md bg-orange-800 px-5 py-3 font-medium text-white hover:bg-orange-900 disabled:opacity-60 sm:w-auto"
-      >
-        {submitting ? "Opening the payment page…" : "Continue to payment"}
-      </button>
+        <button type="submit" disabled={submitting} className="button-primary w-full">
+          {submitting ? "Opening the payment page…" : "Continue to payment"}
+        </button>
+      </div>
     </form>
   );
 }
@@ -175,11 +174,11 @@ function Field({ name, label, error, hint, children }: FieldProps) {
   const describedBy = [hint && hintId, error && errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div>
-      <label htmlFor={name} className="block font-medium">
+      <label htmlFor={name} className="block font-semibold">
         {label}
       </label>
       {hint && (
-        <p id={hintId} className="text-sm text-stone-600">
+        <p id={hintId} className="text-ink-muted">
           {hint}
         </p>
       )}
@@ -188,10 +187,10 @@ function Field({ name, label, error, hint, children }: FieldProps) {
         name,
         "aria-invalid": error ? true : undefined,
         "aria-describedby": describedBy,
-        className: `mt-1 w-full rounded-md border bg-white px-3 py-2 ${error ? "border-red-800" : "border-stone-400"}`,
+        className: `field mt-2 ${error ? "field-invalid" : ""}`,
       })}
       {error && (
-        <p id={errorId} className="mt-1 text-sm text-red-800">
+        <p id={errorId} className="mt-2 text-error">
           {error}
         </p>
       )}

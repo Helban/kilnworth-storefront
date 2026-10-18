@@ -84,8 +84,8 @@ Inputs: white, 1 px `line` border, 2 px radius, label above.
 
 ## Motion
 
-Only two things move: photos fade in once loaded (200 ms), and the cart count updates with a
-short crossfade. Nothing else. Under `prefers-reduced-motion` both are off.
+Only one thing moves: photos fade in once loaded (200 ms). Under `prefers-reduced-motion` it is
+off. The cart count does not animate: a fading number fails a contrast check mid-fade.
 
 ## Banned
 

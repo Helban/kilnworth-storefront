@@ -32,12 +32,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
             <Link href="/cart" className="text-link inline-flex min-h-11 items-center">
               Cart
-              {itemCount > 0 && (
-                // Keyed by the count, so a new number replaces the old one with a short fade.
-                <span key={itemCount} className="animate-fade-in tabular-nums">
-                  &nbsp;({itemCount})
-                </span>
-              )}
+              {/* No fade on the count: axe measured contrast mid-fade and failed the page. */}
+              {itemCount > 0 && <span className="tabular-nums">&nbsp;({itemCount})</span>}
             </Link>
           </div>
         </header>

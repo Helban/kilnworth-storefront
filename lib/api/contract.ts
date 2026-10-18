@@ -3,6 +3,11 @@ import { ORDER_STATUSES } from "@/lib/store/orders";
 import { PRODUCT_CATEGORIES } from "@/lib/store/products";
 import { isUsStateCode } from "@/lib/us-states";
 
+// Our CSP has no 'unsafe-eval'. Without this, zod probes `new Function` on first parse in the
+// browser, the CSP blocks it, and Chrome logs a CSP issue that costs the page its Best Practices
+// score. jitless is the same validation without the compiled fast path.
+z.config({ jitless: true });
+
 // The JSON the API promises. Route handlers build these shapes; the client refuses anything else.
 
 export const slugSchema = z.string().regex(/^[a-z0-9-]{1,64}$/);

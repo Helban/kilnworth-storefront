@@ -3,16 +3,24 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { AddToCart } from "@/components/add-to-cart";
+import { TileGrid } from "@/components/catalog-tiles";
 import { FetchFailure } from "@/components/fetch-failure";
+import { ProductGallery } from "@/components/product-gallery";
 import { ProductJsonLd } from "@/components/product-json-ld";
-import { ProductPhoto } from "@/components/product-photo";
 import { StockLabel } from "@/components/stock-label";
+import type { ApiResult } from "@/lib/api/client";
+import type { Product, ProductListBody } from "@/lib/api/contract";
 import { getServerApi } from "@/lib/api/server";
 import { formatPrice } from "@/lib/money";
 import { detailsFor } from "@/lib/product-details";
 
 // generateMetadata and the page both need the product; this runs the lookup once per request.
 const loadProduct = cache(async (slug: string) => (await getServerApi()).getProduct(slug));
+
+const MORE_PIECES = 4;
+// Below this many in-stock pieces in the same category, "More from this batch" fills up from the
+// other categories.
+const MIN_SAME_CATEGORY = 2;
 
 export async function generateMetadata({
   params,
@@ -29,7 +37,8 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: PageProps<"/products/[slug]">) {
   const { slug } = await params;
-  const lookup = await loadProduct(slug);
+  const api = await getServerApi();
+  const [lookup, catalog] = await Promise.all([loadProduct(slug), api.listProducts()]);
 
   if (!lookup.ok) {
     if (lookup.failure.kind === "http" && lookup.failure.status === 404) notFound();
@@ -49,14 +58,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
       <article className="mt-8 grid gap-8 lg:grid-cols-2 lg:gap-16">
         {/* Stays in view on desktop while the details scroll past; top clears the sticky header. */}
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <ProductPhoto
-            image={product.image}
-            alt={product.name}
-            layout="large"
-            loading="eager"
-            sizes="(min-width: 75rem) 34rem, (min-width: 64rem) 45vw, 100vw"
-            className={product.stockLeft === 0 ? "opacity-50" : ""}
-          />
+          <ProductGallery product={product} />
         </div>
         <div>
           <h1 className="text-4xl sm:text-5xl">{product.name}</h1>
@@ -76,8 +78,54 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               ))}
             </dl>
           )}
+          <details className="mt-8 max-w-[65ch] border-y border-line">
+            <summary className="cursor-pointer py-3 font-semibold">
+              Shipping and returns
+            </summary>
+            <div className="pb-6 leading-relaxed">
+              <p>
+                Flat $9.00 shipping within the US. Pieces leave the studio within three business days. Unused pieces
+                can be returned within 30 days.
+              </p>
+              <Link href="/terms" className="text-link mt-2 inline-block">
+                Full terms of sale
+              </Link>
+            </div>
+          </details>
         </div>
       </article>
+      <MoreFromThisBatch product={product} catalog={catalog} />
     </>
   );
+}
+
+function MoreFromThisBatch({ product, catalog }: { product: Product; catalog: ApiResult<ProductListBody> }) {
+  if (!catalog.ok) {
+    return (
+      <div className="mt-16 sm:mt-24">
+        <FetchFailure failure={catalog.failure} subject="more from this batch" retryHref={`/products/${product.slug}`} />
+      </div>
+    );
+  }
+  const pieces = morePiecesLike(product, catalog.data.products);
+  if (pieces.length === 0) return null;
+
+  return (
+    <section aria-labelledby="more-heading" className="mt-16 sm:mt-24">
+      <h2 id="more-heading" className="border-b border-line pb-4 text-3xl">
+        More from this batch
+      </h2>
+      <div className="mt-8">
+        <TileGrid products={pieces} />
+      </div>
+    </section>
+  );
+}
+
+function morePiecesLike(product: Product, products: Product[]): Product[] {
+  const others = products.filter((other) => other.slug !== product.slug && other.stockLeft > 0);
+  const sameCategory = others.filter((other) => other.category === product.category);
+  if (sameCategory.length >= MIN_SAME_CATEGORY) return sameCategory.slice(0, MORE_PIECES);
+  const otherCategories = others.filter((other) => other.category !== product.category);
+  return [...sameCategory, ...otherCategories].slice(0, MORE_PIECES);
 }

@@ -3,6 +3,7 @@ import { Newsreader, Public_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { CART_COOKIE, countItems, parseCartCookie } from "@/lib/cart/cookie";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 // Self-hosted by next/font at build time, so the pages load no third-party font files. Newsreader
@@ -12,6 +13,7 @@ const newsreader = Newsreader({ subsets: ["latin"], axes: ["opsz"], variable: "-
 const publicSans = Public_Sans({ subsets: ["latin"], weight: ["400", "600"], variable: "--font-public-sans" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: { default: "Kilnworth Studio", template: "%s | Kilnworth Studio" },
   description: "Small-batch ceramics from Kilnworth Studio.",
 };
@@ -44,6 +46,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/terms" className="text-link">
               Terms of sale
             </Link>
+            . Built by{" "}
+            <a href="https://helban.dev" className="text-link">
+              helban.dev
+            </a>
+            .
           </p>
         </footer>
       </body>

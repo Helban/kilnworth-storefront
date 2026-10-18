@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { AddToCart } from "@/components/add-to-cart";
 import { FetchFailure } from "@/components/fetch-failure";
+import { ProductJsonLd } from "@/components/product-json-ld";
 import { ProductPhoto } from "@/components/product-photo";
 import { StockLabel } from "@/components/stock-label";
 import { getServerApi } from "@/lib/api/server";
@@ -16,8 +17,14 @@ const loadProduct = cache(async (slug: string) => (await getServerApi()).getProd
 export async function generateMetadata({
   params,
 }: PageProps<"/products/[slug]">): Promise<Metadata> {
-  const lookup = await loadProduct((await params).slug);
-  return { title: lookup.ok ? lookup.data.product.name : "Product unavailable" };
+  const { slug } = await params;
+  const lookup = await loadProduct(slug);
+  if (!lookup.ok) return { title: "Product unavailable" };
+  return {
+    title: lookup.data.product.name,
+    description: lookup.data.product.description,
+    alternates: { canonical: `/products/${slug}` },
+  };
 }
 
 export default async function ProductPage({ params }: PageProps<"/products/[slug]">) {
@@ -35,6 +42,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
   const details = detailsFor(product.slug);
   return (
     <>
+      <ProductJsonLd product={product} />
       <Link href="/" className="text-link">
         Back to the shop
       </Link>

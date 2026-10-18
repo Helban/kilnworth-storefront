@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FetchFailure } from "@/components/fetch-failure";
@@ -7,6 +8,8 @@ import type { Product } from "@/lib/api/contract";
 import { getServerApi } from "@/lib/api/server";
 import { formatPrice } from "@/lib/money";
 import type { ProductCategory } from "@/lib/store/products";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 // A group shot rather than one product, so no piece appears twice on the page.
 const BATCH_PHOTO = { src: "/batch-1144.webp", smallSrc: "/batch-572.webp", width: 1144, height: 460 };

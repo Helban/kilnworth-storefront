@@ -4,6 +4,7 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "routes": [{ "pattern": "shop.helban.dev", "custom_domain": true }],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
@@ -19,9 +20,8 @@
     {
       "binding": "DB",
       "database_name": "kilnworth",
-      // Placeholder. Local dev and tests never contact Cloudflare. Replace with the id from
-      // `wrangler d1 create kilnworth` before the first deploy.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // Local dev and tests use a local copy under .next/cache and never contact this database.
+      "database_id": "3b569ee7-ea06-43dd-bdcf-45bcbaac16d9",
       "migrations_dir": "migrations"
     }
   ]

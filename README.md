@@ -8,9 +8,20 @@ Kilnworth sells pots in small batches, and three of its thirteen pieces are one-
 of 1. Two people can easily reach for the last moon jar at the same moment, so much of the code is
 about making sure only one of them gets it.
 
-Payments run in Stripe test mode only. No real money can move; see "Test mode" below.
+Live: https://shop.helban.dev. Payments run in Stripe test mode only, so no real money can move;
+see "Test mode" below. To try a purchase, use card 4242 4242 4242 4242 with any future date and
+any CVC.
 
 Screenshots of the main pages at 1440 and 390 px wide are in `docs/screenshots/`.
+
+PageSpeed Insights, measured cold on the live site on 18 October 2026 (Performance /
+Accessibility / Best Practices / SEO):
+
+| Page | Mobile | Desktop |
+| --- | --- | --- |
+| Home | 90 to 95 / 100 / 100 / 100 (two runs) | 99 to 100 / 100 / 100 / 100 |
+| Product page | 96 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+| Terms | 99 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
 
 ## What a shopper can do
 
@@ -40,8 +51,9 @@ does not load, because stripe-mock only imitates the API. Everything up to that 
 go through an actual payment page, use your own Stripe account in test mode: put its `sk_test_`
 key in `.dev.vars`, remove `STRIPE_API_BASE`, and run
 `stripe listen --forward-to localhost:3000/api/stripe/webhook`, copying the `whsec_` secret it
-prints into `.dev.vars`. That path has not been tried; there was no Stripe key where this was
-built.
+prints into `.dev.vars`. The deployed site uses that path with a real Stripe test account: a
+purchase there goes through Stripe's hosted page, and the webhook marks the order paid and takes
+the piece off the shelf.
 
 `npm run dev` is the ordinary Next.js dev server. The adapter gives it the same local D1 database
 that wrangler uses. To run the production build inside workerd, the runtime Cloudflare uses:
@@ -131,14 +143,16 @@ both against SQLite and against a real local D1.
 - An order is confirmed only by Stripe's `checkout.session.completed` webhook with a valid
   signature, never by the shopper's browser coming back from Stripe. The same event delivered twice
   changes nothing the second time.
-- Nothing is shipped and no email is sent. Kilnworth Studio does not exist.
+- Nothing is shipped, and no email is sent. Kilnworth Studio does not exist.
 
-## Before a first deploy
+## Deploying
 
-Not done or tried here. In outline: create the database with `wrangler d1 create kilnworth` and
-put its id in `wrangler.jsonc`, apply the migrations with `--remote`, set `STRIPE_SECRET_KEY` and
-`STRIPE_WEBHOOK_SECRET` with `wrangler secret put` (test-mode values), then run
-`npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy` and point a Stripe webhook
-endpoint at `/api/stripe/webhook`.
+The live site was set up like this. Create the database with `wrangler d1 create kilnworth` and
+put its ID in `wrangler.jsonc`. Apply the migrations with
+`wrangler d1 migrations apply DB --remote`. Create a Stripe webhook endpoint for
+`https://<your domain>/api/stripe/webhook` with the four `checkout.session.*` events the handler
+reads. Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` with `wrangler secret put`, test-mode
+values only. Then `npm run deploy` builds with OpenNext and deploys the Worker; the custom domain
+in `wrangler.jsonc` is attached on the same run.
 
 `NOTES.md` is the handover: what was checked and how, what was not, and the open questions.

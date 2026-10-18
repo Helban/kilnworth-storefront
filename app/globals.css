@@ -62,9 +62,10 @@
     @apply inline-flex min-h-11 items-center justify-center rounded-xs bg-ink px-6 font-semibold text-surface hover:bg-ink/85 disabled:opacity-60;
   }
 
-  /* The primary button for dark grounds, such as the hero. */
+  /* The primary button for dark grounds, such as the hero. Its focus ring is white, because the
+     usual ink ring would vanish against the dark behind it. */
   .button-inverse {
-    @apply inline-flex min-h-11 items-center justify-center rounded-xs bg-surface px-6 font-semibold text-ink hover:bg-bg;
+    @apply inline-flex min-h-11 items-center justify-center rounded-xs bg-surface px-6 font-semibold text-ink hover:bg-bg focus-visible:outline-surface;
   }
 
   .button-secondary {

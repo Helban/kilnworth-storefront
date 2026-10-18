@@ -30,10 +30,18 @@
   }
 }
 
+/* A band that runs the full viewport width from inside the page-width <main>. */
+@utility full-bleed {
+  margin-inline: calc(50% - 50vw);
+}
+
 @layer base {
   body {
     background: var(--color-bg);
     color: var(--color-ink);
+    /* 100vw includes a scrollbar that takes up space, so a full-bleed band is that much wider than
+       the page. Clip the sliver instead of letting the page scroll sideways. */
+    overflow-x: clip;
   }
 
   h1,
@@ -52,6 +60,11 @@
 @layer components {
   .button-primary {
     @apply inline-flex min-h-11 items-center justify-center rounded-xs bg-ink px-6 font-semibold text-surface hover:bg-ink/85 disabled:opacity-60;
+  }
+
+  /* The primary button for dark grounds, such as the hero. */
+  .button-inverse {
+    @apply inline-flex min-h-11 items-center justify-center rounded-xs bg-surface px-6 font-semibold text-ink hover:bg-bg;
   }
 
   .button-secondary {
@@ -75,6 +88,19 @@
   /* Product names in lists: the underline appears on hover, the way the catalog tiles behave. */
   .name-link {
     @apply decoration-1 underline-offset-4 hover:underline;
+  }
+}
+
+/* The hero text sits on this, never on the bare photo. On a phone the scrim is the text's own
+   block at the bottom of the hero, solid behind the text however it wraps and fading out over the
+   6rem above it. On desktop it covers the hero from the left and stays solid past the end of the
+   text, which reaches 36rem from the edge on narrow desktops. Measured at 4.5:1 or better over the
+   lightest part of the photo; see NOTES.md. */
+.hero-scrim {
+  --scrim: color-mix(in srgb, var(--color-ink) 70%, transparent);
+  background: linear-gradient(to top, var(--scrim) calc(100% - 6rem), transparent);
+  @media (width >= 64rem) {
+    background: linear-gradient(to right, var(--scrim) max(45%, 36rem), transparent max(75%, 56rem));
   }
 }
 

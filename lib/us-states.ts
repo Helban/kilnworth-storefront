@@ -13,4 +13,8 @@ export const US_STATES = [
   ["WA", "Washington"], ["WV", "West Virginia"], ["WI", "Wisconsin"], ["WY", "Wyoming"],
 ] as const;
 
-export const US_STATE_CODES = US_STATES.map(([code]) => code) as [string, ...string[]];
+const US_STATE_CODES: ReadonlySet<string> = new Set(US_STATES.map(([code]) => code));
+
+export function isUsStateCode(code: string): boolean {
+  return US_STATE_CODES.has(code);
+}

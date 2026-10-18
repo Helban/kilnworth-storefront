@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ORDER_STATUSES } from "@/lib/store/orders";
 import { PRODUCT_CATEGORIES } from "@/lib/store/products";
-import { US_STATE_CODES } from "@/lib/us-states";
+import { isUsStateCode } from "@/lib/us-states";
 
 // The JSON the API promises. Route handlers build these shapes; the client refuses anything else.
 
@@ -115,7 +115,7 @@ export const checkoutDetailsSchema = z.object({
   line1: z.string().trim().min(1, { error: "Enter the street address." }).max(100),
   line2: z.string().trim().max(100),
   city: z.string().trim().min(1, { error: "Enter the city." }).max(60),
-  state: z.enum(US_STATE_CODES, { error: "Choose a state." }),
+  state: z.string({ error: "Choose a state." }).refine(isUsStateCode, { error: "Choose a state." }),
   postalCode: z
     .string()
     .trim()

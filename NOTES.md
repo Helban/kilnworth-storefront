@@ -6,7 +6,9 @@ Linux container with Node 22.22.0 and npm 10.9.4.
 
 ## Status
 
-Every item in the brief's scope is built. Nothing has been deployed.
+Every item in the brief's scope is built. Since 2026-10-18 the shop runs at https://shop.helban.dev
+on Cloudflare Workers with a remote D1 database and a real Stripe test account (see "Deployed"
+below).
 
 | Area | State |
 | --- | --- |
@@ -528,12 +530,21 @@ One more local development pitfall: twice, `next dev` kept serving the previous 
 after an edit to it, with "Compiled" in the log and no error. Restarting the dev server with
 `.next/dev` deleted fixed it both times.
 
+## Deployed
+
+Checked on the live site on 2026-10-18: a purchase of one mug with test card 4242 went through
+Stripe's hosted Checkout page in a real Stripe test account, came back to the order page, the
+webhook delivered by Stripe marked the order Paid, and the mug's stock in the remote D1 database
+went from 8 to 7. Cold PageSpeed numbers are in the README.
+
+One finding from the live run: zod probes `new Function` on its first parse in the browser to pick
+a faster code path. The CSP has no `'unsafe-eval'`, so Chrome logged a CSP issue on every page
+that validates in the browser, and PageSpeed Best Practices dropped to 96 on product pages.
+`z.config({ jitless: true })` in `lib/api/contract.ts` turns the probe off; the issue is gone and
+the score is 100.
+
 ## Not verified
 
-- A deploy to Cloudflare, and anything on the real edge. All runtime checks used local workerd
-  through wrangler. The D1 `database_id` in `wrangler.jsonc` is a zero placeholder.
-- A real Stripe test account: session creation against api.stripe.com, the hosted payment page,
-  and webhooks delivered by Stripe (for example through `stripe listen`). No key exists here.
 - Browsers other than Chromium 141, and screen readers. The accessibility checks are axe, the
   keyboard tests and reading the markup, not a screen reader session.
 - The design on real devices. Screenshots exist at 1440 and 390 px only; the hero text contrast

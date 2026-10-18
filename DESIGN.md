@@ -101,3 +101,84 @@ monospace labels, pill-shaped buttons, drop shadows on photos, emoji.
 - No horizontal scroll at 390 px.
 - NOTES.md gains a short "Design pass" section: what changed, and anything you deliberately
   did not follow from this brief and why.
+
+---
+
+# Second pass: give the shop a place and a story
+
+The first pass framed the photos well but reads as a plain catalog on a white page. A visitor
+should feel they are in a small working studio before they see a price. Everything above still
+applies (palette, type, bans, controls). Behaviour, routes, API contract and existing tests stay
+unchanged; add tests only for new interactive parts. Use the copy below as written.
+
+## New photos (already in `public/`)
+
+- `public/studio/studio-wide-2000.webp` and `-1000.webp`: the studio, 16:9.
+- `public/studio/process-throwing-900.webp`, `process-glazing-900.webp`,
+  `process-kiln-900.webp` and their `-450` copies: 4:5 portraits.
+- `public/products/<slug>-detail.webp` (800) and `<slug>-detail-400.webp` for every product: a
+  close-up of the glaze. Derive the path the way `tilePhotoSrc` does; do not change the API.
+- `public/batch-*.webp` is no longer used. Delete it.
+
+## Home
+
+1. **Hero, full bleed.** The studio photo across the full viewport width (outside
+   `page-width`), about 72vh tall on desktop and 56vh on a phone, `object-fit: cover`,
+   eager with `fetchPriority="high"`, `srcSet` 1000w/2000w, `sizes="100vw"`. Over its left
+   half, white text on a dark scrim (a CSS gradient from about 70% `ink` to transparent; the
+   scrim is fine, gradient TEXT is still banned). Measure contrast of the text over the real
+   photo and the scrim at both widths; it must be 4.5:1 or better.
+   - h1: "Current batch"
+   - p: "Mugs, bowls and vases from our last firing. We make a few of each, and once a piece
+     sells it does not come back."
+   - primary button (white background, `ink` text): "See the pieces", linking to `#pieces`.
+2. **Info strip** directly under the hero, one row on desktop, wrapping on a phone, hairline
+   below: "A new batch about every six weeks", "Ships within three business days",
+   "30 days to return unused pieces". Plain text, no icons.
+3. **The catalog** as it is now, under an anchor `id="pieces"`.
+4. **"How a batch is made"**: a full-bleed band in `ink` background with `bg`-colored text,
+   placed between Vases and One of a kind. Not three equal columns: the throwing photo large
+   on the left (spanning both rows on desktop), glazing and kiln smaller on the right, each with
+   an h3 and its text beside or under it. On a phone, stack in the order throwing, glazing,
+   kiln.
+   - h2: "How a batch is made"
+   - Throwing: "Every piece starts on the wheel. A mug takes about ten minutes to throw and
+     two days to dry before it gets a handle."
+   - Glazing: "We mix our own glazes and try each one on test tiles before it goes near a pot.
+     The wall of tiles is how we choose."
+   - Firing: "The kiln runs for about twelve hours and takes another day to cool. Ash and iron
+     move in the heat, so no two pieces come out the same."
+
+## Header
+
+Add links to the four categories (anchors on the home page: Mugs and cups, Bowls, Vases,
+One of a kind) between the wordmark and Cart on desktop. On a phone, show them as a second
+row under the wordmark that wraps; no hamburger menu.
+
+## Product page
+
+- **Two photos.** The main photo plus the glaze close-up. Under the main photo, two thumbnail
+  buttons switch between them (`aria-pressed`, labelled "Show the whole piece" and "Show the
+  glaze up close", 44 px minimum). Without JavaScript the main photo shows.
+- **Shipping and returns** as a `<details>` element under the description:
+  summary "Shipping and returns", body "Flat $9.00 shipping within the US. Pieces leave the
+  studio within three business days. Unused pieces can be returned within 30 days." and a
+  link "Full terms of sale" to `/terms`.
+- **"More from this batch"**: up to four other in-stock products from the same category (fall
+  back to any category if fewer than two), as tiles like the catalog, at the bottom of the page.
+
+## Footer
+
+Three parts on desktop, stacked on a phone, on the `bg` background with a hairline above:
+- the wordmark and "Kilnworth Studio is a two-person pottery in Portland, Oregon. Everything
+  here is thrown, glazed and fired in one room.";
+- links: the four categories and "Terms of sale";
+- the existing line "Kilnworth Studio is a fictional shop and this site is a demo. No real
+  orders are taken." with "Built by helban.dev" linking to https://helban.dev (underlined).
+
+## Done when (second pass)
+
+Same checks as the first pass, all green, plus: the new screenshots replace the old ones in
+`docs/screenshots/` (home, a product page with the thumbnails visible, cart, checkout, at 1440
+and 390 px), taken from `npm run preview` after scrolling once so lazy photos have loaded. A
+short "Second design pass" section in NOTES.md.

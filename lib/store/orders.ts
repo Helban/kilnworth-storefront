@@ -76,7 +76,7 @@ export interface OrderRecord {
   readonly status: OrderStatus;
   readonly email: string;
   readonly shippingAddress: ShippingAddress;
-  readonly lines: { name: string; quantity: number; unitPriceCents: number }[];
+  readonly lines: readonly { readonly name: string; readonly quantity: number; readonly unitPriceCents: number }[];
   readonly subtotalCents: number;
   readonly shippingCents: number;
   readonly totalCents: number;

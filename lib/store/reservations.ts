@@ -2,6 +2,8 @@ import type { CartLine } from "@/lib/cart/cookie";
 import type { SqlDatabase, SqlStatement } from "./database";
 
 export const RESERVATION_TTL_MS = 10 * 60 * 1000;
+const LINE_UPDATE_OFFSET = 1;
+const STATEMENTS_PER_LINE = 2;
 
 export type ReserveOutcome =
   | { ok: true; reservationId: string; expiresAt: number }
@@ -25,7 +27,7 @@ export async function reserveStock(
 ): Promise<ReserveOutcome> {
   const reservationId = crypto.randomUUID();
   const expiresAt = now + RESERVATION_TTL_MS;
-  const results = await db.batch([
+  const batchOutcomes = await db.batch([
     db
       .prepare("INSERT INTO reservations (id, status, created_at, expires_at) VALUES (?1, 'active', ?2, ?3)")
       .bind(reservationId, now, expiresAt),
@@ -42,9 +44,9 @@ export async function reserveStock(
     ]),
   ]);
 
-  // results[0] is the reservation row; each line then has its UPDATE followed by its INSERT.
+  // batchOutcomes[0] is the reservation row; each line then has its UPDATE followed by its INSERT.
   const shortSlugs = lines
-    .filter((_, index) => results[1 + index * 2].meta.changes === 0)
+    .filter((_, index) => batchOutcomes[LINE_UPDATE_OFFSET + index * STATEMENTS_PER_LINE].meta.changes === 0)
     .map((line) => line.slug);
   if (shortSlugs.length === 0) return { ok: true, reservationId, expiresAt };
 
@@ -103,7 +105,7 @@ type HoldCondition = typeof HOLD_BY_ID | typeof HOLDS_EXPIRED_BY | typeof HOLD_O
 
 // Statements that give back the stock of every active hold matching the condition, then mark
 // those holds released. Run them in one batch, in this order, so a hold is returned exactly once.
-export function releaseHoldStatements(db: SqlDatabase, matching: HoldCondition, value: string | number): SqlStatement[] {
+export function releaseHoldStatements(db: SqlDatabase, matching: HoldCondition, conditionArg: string | number): SqlStatement[] {
   const heldLines = `
     FROM reservation_lines l JOIN reservations r ON r.id = l.reservation_id
     WHERE r.status = 'active' AND ${matching}`;
@@ -114,9 +116,9 @@ export function releaseHoldStatements(db: SqlDatabase, matching: HoldCondition, 
          SET reserved = reserved - (SELECT SUM(l.quantity) ${heldLines} AND l.product_id = products.id)
          WHERE id IN (SELECT l.product_id ${heldLines})`,
       )
-      .bind(value),
+      .bind(conditionArg),
     db
       .prepare(`UPDATE reservations SET status = 'released' WHERE id IN (SELECT r.id FROM reservations r WHERE r.status = 'active' AND ${matching})`)
-      .bind(value),
+      .bind(conditionArg),
   ];
 }

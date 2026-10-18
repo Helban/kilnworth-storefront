@@ -98,7 +98,6 @@ function CategorySection({ category, children }: { category: ProductCategory; ch
   );
 }
 
-// Mugs and bowls: four across on desktop, two on a phone.
 function TileGrid({ products }: { products: Product[] }) {
   return (
     <ul className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-8 lg:grid-cols-4">
@@ -114,7 +113,6 @@ function TileGrid({ products }: { products: Product[] }) {
   );
 }
 
-// Vases: two larger tiles side by side.
 function TilePair({ products }: { products: Product[] }) {
   return (
     <ul className="grid gap-10 sm:grid-cols-2 sm:gap-8">
@@ -130,7 +128,6 @@ function TilePair({ products }: { products: Product[] }) {
   );
 }
 
-// One-offs: a full-width row each, photo and text swapping sides from row to row on desktop.
 function OneOffRows({ products }: { products: Product[] }) {
   return (
     <ul className="space-y-16">

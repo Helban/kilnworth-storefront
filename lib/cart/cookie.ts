@@ -7,13 +7,13 @@ import { MAX_LINE_QUANTITY, slugSchema } from "@/lib/api/contract";
 export const CART_COOKIE = "cart";
 const MAX_CART_LINES = 20;
 
-export const CART_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "lax",
-  path: "/",
-  maxAge: 60 * 60 * 24 * 30,
-} as const;
+export const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
+
+export function cookieOptions(maxAgeSeconds: number) {
+  return { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: maxAgeSeconds } as const;
+}
+
+export const CART_COOKIE_OPTIONS = cookieOptions(THIRTY_DAYS_SECONDS);
 
 export interface CartLine {
   readonly slug: string;

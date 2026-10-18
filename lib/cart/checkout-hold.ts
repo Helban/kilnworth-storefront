@@ -9,18 +9,12 @@ import {
   type ActiveReservation,
   type ReserveOutcome,
 } from "@/lib/store/reservations";
-import type { CartLine } from "./cookie";
+import { cookieOptions, type CartLine } from "./cookie";
 
 // The id of this shopper's current reservation. It is a random UUID, so it doubles as proof that
 // the hold belongs to whoever holds the cookie.
-const CHECKOUT_COOKIE = "checkout";
-const CHECKOUT_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "lax",
-  path: "/",
-  maxAge: 60 * 60,
-} as const;
+export const CHECKOUT_COOKIE = "checkout";
+const CHECKOUT_COOKIE_OPTIONS = cookieOptions(60 * 60);
 
 export async function readHeldReservationId(): Promise<string | undefined> {
   return (await cookies()).get(CHECKOUT_COOKIE)?.value;

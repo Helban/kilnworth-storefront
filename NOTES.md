@@ -549,10 +549,10 @@ the score is 100.
 - The design on real devices. Screenshots exist at 1440 and 390 px only; the hero text contrast
   was also measured at eleven other viewport sizes, all in Chromium. Fonts were checked only in
   Chromium on Linux.
-- The full-bleed bands on a system whose scrollbar takes up space (Windows, or Linux with classic
-  scrollbars). Headless Chromium here reserves 0 px for it. In theory a band then sits up to half
-  a scrollbar width off centre against the page, and `body` clips the extra width instead of
-  scrolling sideways.
+- The full-bleed bands on Linux with classic scrollbars or other browsers on Windows. On
+  2026-10-19 the live site was checked in Chrome on Windows, where the scrollbar takes up space:
+  the hero photo and the "How a batch is made" band reach both edges of the window. Headless
+  Chromium reserves 0 px for a scrollbar, so the automated screenshots do not cover this case.
 - `next dev` on a machine without an HTTPS proxy (see Environment notes).
 
 ## Open questions

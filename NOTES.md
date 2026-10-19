@@ -2,7 +2,7 @@
 
 Written for whoever picks this up next. It records what was built, what was checked and how, and
 what was not checked. The build was done on 2026-10-17 and both design passes on 2026-10-18, in a
-Linux container with Node 22.22.0 and npm 10.9.4.
+Linux build machine with Node 22.22.0 and npm 10.9.4.
 
 ## Status
 
@@ -322,9 +322,8 @@ switcher, a category link from another page, and an axe scan for WCAG
 confirmed to report a deliberately unlabeled input). The webhook in the e2e test is built and
 signed by the test, playing Stripe; it reads the session id from the local D1 file.
 
-About the browser: the brief says to run Playwright "if the browser download works here". This
-container ships Chromium 141 in `/opt/pw-browsers`, and its instructions say not to run
-`playwright install`, so I did not try the download. `playwright.config.ts` takes an optional
+About the browser: the build machine had Chromium 141 preinstalled in `/opt/pw-browsers`, so the
+first runs used it instead of downloading one. `playwright.config.ts` takes an optional
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE`; here the suite ran with that pointing at the pre-installed
 Chromium, and with the proxy variables unset (see Environment notes). On a normal machine,
 `npx playwright install chromium` once is enough.
@@ -575,11 +574,11 @@ the score is 100.
 
 ## Environment notes
 
-- `opennext.js.org` is blocked by this container's network policy, so the adapter was set up from
-  the templates and the `migrate` command source inside `node_modules/@opennextjs/cloudflare`.
-- No Docker daemon was running at the start of the session; running `dockerd` started one, and
-  `stripe/stripe-mock` pulled and ran normally.
-- The container sets `HTTPS_PROXY`, and wrangler announces "We'll use your proxy for fetch
+- `opennext.js.org` was blocked by the build machine's network policy, so the adapter was set up
+  from the templates and the `migrate` command source inside `node_modules/@opennextjs/cloudflare`.
+- No Docker daemon was running at first; running `dockerd` started one, and `stripe/stripe-mock`
+  pulled and ran normally.
+- The build machine sets `HTTPS_PROXY`, and wrangler announces "We'll use your proxy for fetch
   requests". Under `next dev` that broke the server's calls to stripe-mock on localhost
   (`StripeConnectionError`); with the proxy variables unset, they worked. The same applied to the
   preview and the e2e run. I did not dig into which component ignores `NO_PROXY`.

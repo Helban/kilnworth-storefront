@@ -29,12 +29,13 @@ export default function TermsPage() {
       </p>
       <h2 className="pt-4 text-2xl">Returns</h2>
       <p>
-        You can return unused pieces within 30 days of delivery. You pay for return shipping unless the piece
-        arrived damaged. We refund the price of the piece within five business days of getting it back. The
-        original $9.00 shipping is not refunded.
+        You can return unused pieces that arrived intact within 30 days of delivery, and you pay for return
+        shipping. We refund the price of the piece within five business days of getting it back. The original
+        $9.00 shipping is not refunded. A piece that arrived broken is covered by the section above instead.
       </p>
       <p>
-        One-of-a-kind pieces follow the same rules. Since there is no second one to exchange it for, we refund it.
+        One-of-a-kind pieces follow the same rules. If one arrives broken there is no second one to send, so we
+        refund it.
       </p>
     </article>
   );
